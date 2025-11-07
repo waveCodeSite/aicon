@@ -25,7 +25,16 @@
 
 ## 快速开始
 
-### 1. 安装依赖
+### 1. 一键启动 (推荐)
+
+```bash
+# 使用Makefile快速启动开发环境
+make setup
+```
+
+### 2. 手动启动
+
+如果需要手动控制每个步骤：
 
 ```bash
 # 安装uv (如果还没有安装)
@@ -33,9 +42,31 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # 同步依赖
 uv sync
+
+# 运行数据库迁移
+uv run alembic upgrade head
+
+# 启动API服务
+uv run uvicorn src.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-### 2. 环境配置
+### 3. 启动完整服务
+
+```bash
+# 使用Makefile启动API服务
+make start
+
+# 启动Celery Worker (新终端)
+make worker
+
+# 启动Celery Beat (新终端)
+make beat
+
+# 或者使用快速命令启动完整环境
+make dev
+```
+
+### 4. 环境配置
 
 复制环境配置文件:
 ```bash
@@ -44,42 +75,77 @@ cp .env.example .env
 
 编辑 `.env` 文件，配置数据库、Redis、MinIO等信息。
 
-### 3. 数据库迁移
-
-```bash
-# 运行迁移
-uv run alembic upgrade head
-```
-
-### 4. 启动服务
-
-```bash
-# 启动API服务
-uv run uvicorn src.main:app --reload --host 0.0.0.0 --port 8000
-
-# 启动Celery Worker (新终端)
-uv run celery -A src.workers.base worker --loglevel=info --concurrency=4
-
-# 启动Celery Beat (新终端)
-uv run celery -A src.workers.base beat --loglevel=info
-```
-
 ### 5. 访问API文档
 
 - Swagger UI: http://localhost:8000/docs
 - ReDoc: http://localhost:8000/redoc
 - OpenAPI JSON: http://localhost:8000/openapi.json
 
+## Makefile 命令
+
+项目提供了完整的Makefile来简化开发工作流：
+
+### 核心命令
+
+```bash
+make help          # 显示所有可用命令
+make setup         # 初始化开发环境 (依赖 + 迁移)
+make start         # 启动开发服务器 (热重载)
+make migrate       # 运行数据库迁移
+make dev           # 显示完整开发环境启动指南
+```
+
+### 数据库操作
+
+```bash
+make migrate-create MSG="添加用户表"  # 创建新迁移
+make migrate-down                     # 回滚最后一次迁移
+make db-reset                          # 重置数据库 (危险!)
+make db-status                         # 查看迁移状态
+```
+
+### 开发工具
+
+```bash
+make test           # 运行所有测试
+make test-unit      # 运行单元测试
+make test-fast      # 快速测试 (排除慢速测试)
+make lint           # 代码检查和格式化
+make format         # 格式化代码
+make clean          # 清理临时文件
+```
+
+### Celery 任务
+
+```bash
+make worker         # 启动Celery Worker
+make beat           # 启动Celery Beat (定时任务)
+```
+
+### 快捷别名
+
+```bash
+make s              # make start
+make m              # make migrate
+make t              # make test
+make l              # make lint
+make c              # make clean
+```
+
 ## 开发指南
 
 ### 代码格式化
 
 ```bash
-# 格式化代码
+# 使用Makefile
+make format
+
+# 手动执行
 uv run black src/ tests/
 uv run isort src/ tests/
 
 # 代码检查
+make check
 uv run flake8 src/ tests/
 uv run mypy src/
 ```
@@ -236,6 +302,37 @@ CELERY_WORKER_CONCURRENCY=4
 ### Prometheus指标
 
 访问 `http://localhost:8000/metrics` 获取Prometheus格式的指标数据。
+
+### 彩色日志系统
+
+系统提供智能的彩色日志输出：
+
+**开发环境特性：**
+- 🌈 **彩色输出** - 不同日志级别使用不同颜色 (INFO绿色, ERROR红色)
+- 📍 **精确定位** - 显示模块、函数名和行号
+- ⚡ **实时更新** - 热重载时日志自动刷新
+- 🎯 **智能检测** - 自动检测终端颜色支持
+
+**日志格式示例：**
+```
+14:32:15   INFO     [main] start_server 🚀 启动开发服务器...
+14:32:15   INFO     [database] test_connection ✅ 数据库连接成功
+14:32:16   WARNING  [auth] verify_token ⚠️ Token即将过期
+14:32:17   ERROR    [api] handle_request ❌ 请求处理失败
+```
+
+**配置选项：**
+```bash
+# .env 文件中配置
+COLORED_LOGS=true     # 启用彩色日志 (默认: true)
+LOG_LEVEL=INFO         # 日志级别
+STRUCTURED_LOGGING=true # 结构化日志到文件
+```
+
+**生产环境：**
+- 自动切换到标准格式，确保兼容性
+- 支持JSON结构化日志输出
+- 可配置日志文件轮转
 
 ### 结构化日志
 

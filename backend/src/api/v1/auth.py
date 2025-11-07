@@ -7,10 +7,11 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, or_
 
 from src.core.config import settings
-from src.core.database import get_db
+from src.core.database import get_db_session
 from src.core.security import (
     create_access_token,
     verify_token,
@@ -32,9 +33,9 @@ oauth2_scheme = OAuth2PasswordBearer(
 )
 
 
-def get_current_user(
+async def get_current_user(
     token: str = Depends(oauth2_scheme),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db_session)
 ) -> User:
     """获取当前认证用户"""
     credentials_exception = HTTPException(
@@ -51,7 +52,8 @@ def get_current_user(
     except TokenError:
         raise credentials_exception
 
-    user = db.query(User).filter(User.id == user_id).first()
+    result = await db.execute(select(User).filter(User.id == user_id))
+    user = result.scalar_one_or_none()
     if user is None:
         raise credentials_exception
 
@@ -67,13 +69,16 @@ def get_current_user(
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 async def register(
     user_data: UserRegister,
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db_session)
 ) -> Any:
     """用户注册"""
     # 检查用户名是否已存在
-    existing_user = db.query(User).filter(
-        (User.username == user_data.username) | (User.email == user_data.email)
-    ).first()
+    result = await db.execute(
+        select(User).filter(
+            or_(User.username == user_data.username, User.email == user_data.email)
+        )
+    )
+    existing_user = result.scalar_one_or_none()
 
     if existing_user:
         if existing_user.username == user_data.username:
@@ -88,8 +93,8 @@ async def register(
             )
 
     # 创建新用户
-    user = User.create_user(
-        db=db,
+    user = await User.create_user(
+        db_session=db,
         username=user_data.username,
         email=user_data.email,
         password=user_data.password,
@@ -102,11 +107,12 @@ async def register(
 @router.post("/login", response_model=TokenResponse)
 async def login(
     form_data: OAuth2PasswordRequestForm = Depends(),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db_session)
 ) -> Any:
     """用户登录"""
     # 查找用户
-    user = db.query(User).filter(User.username == form_data.username).first()
+    result = await db.execute(select(User).filter(User.username == form_data.username))
+    user = result.scalar_one_or_none()
 
     if not user or not user.verify_password(form_data.password):
         raise HTTPException(
@@ -124,7 +130,7 @@ async def login(
 
     # 更新最后登录时间
     user.update_last_login()
-    db.commit()
+    await db.commit()
 
     # 创建访问令牌
     access_token_expires = timedelta(minutes=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES)

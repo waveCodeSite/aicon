@@ -53,30 +53,39 @@ class User(BaseModel):
         self.preferences = json.dumps(preferences, ensure_ascii=False)
 
     @classmethod
-    def get_by_username(cls, db_session, username: str):
+    async def get_by_username(cls, db_session, username: str):
         """根据用户名获取用户"""
-        return db_session.query(cls).filter(cls.username == username).first()
+        from sqlalchemy import select
+        result = await db_session.execute(select(cls).filter(cls.username == username))
+        return result.scalar_one_or_none()
 
     @classmethod
-    def get_by_email(cls, db_session, email: str):
+    async def get_by_email(cls, db_session, email: str):
         """根据邮箱获取用户"""
-        return db_session.query(cls).filter(cls.email == email).first()
+        from sqlalchemy import select
+        result = await db_session.execute(select(cls).filter(cls.email == email))
+        return result.scalar_one_or_none()
 
     @classmethod
-    def create_user(cls, db_session, username: str, email: str, password: str,
-                   display_name: str = None):
+    async def create_user(cls, db_session, username: str, email: str, password: str,
+                         display_name: str = None):
         """创建新用户"""
-        from src.core.security import get_password_hash
+        from src.core.security import get_password_hash, SecurityError
+
+        try:
+            password_hash = get_password_hash(password)
+        except SecurityError as e:
+            raise ValueError(f"密码哈希生成失败: {str(e)}")
 
         user = cls(
             username=username,
             email=email,
             display_name=display_name,
-            password_hash=get_password_hash(password)
+            password_hash=password_hash
         )
         db_session.add(user)
-        db_session.commit()
-        db_session.refresh(user)
+        await db_session.commit()
+        await db_session.refresh(user)
         return user
 
     def verify_password(self, password: str) -> bool:

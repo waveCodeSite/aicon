@@ -68,25 +68,6 @@ services:
       timeout: 10s
       retries: 5
 
-  # MinIO 客户端 - 用于创建初始bucket
-  minio-init:
-    image: minio/mc:latest
-    container_name: aicg-minio-init
-    depends_on:
-      minio:
-        condition: service_healthy
-    entrypoint: >
-      /bin/sh -c "
-      /usr/bin/mc alias set myminio http://minio:9000 minioadmin minioadmin123;
-      /usr/bin/mc mb myminio/aicg-platform --ignore-existing;
-      /usr/bin/mc policy set public myminio/aicg-platform;
-      exit 0;
-      "
-    networks:
-      - aicg-network
-    profiles:
-      - init
-
 # 网络配置
 networks:
   aicg-network:

@@ -1,28 +1,33 @@
 """
-Alembic环境配置
+Alembic环境配置 - 简化版本
 """
 
 import asyncio
-from logging.config import fileConfig
-from sqlalchemy import pool
-from sqlalchemy.engine import Connection
-from sqlalchemy.ext.asyncio import async_engine_from_config
-from alembic import context
-
+import os
 # 导入应用配置
 import sys
-import os
+from logging.config import fileConfig
+
+from alembic import context
+from sqlalchemy import pool
+from sqlalchemy.engine import Connection
+
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from src.core.config import settings
-from src.core.database import Base
 from src.models import *  # 导入所有模型
 
 # 获取Alembic配置对象
 config = context.config
 
-# 设置数据库URL
-config.set_main_option("sqlalchemy.url", settings.database_url_sync)
+# 设置同步数据库URL用于Alembic
+if hasattr(settings, 'DATABASE_URL'):
+    # 将异步URL转换为同步URL
+    sync_url = settings.DATABASE_URL.replace("postgresql+asyncpg://", "postgresql://")
+    config.set_main_option("sqlalchemy.url", sync_url)
+else:
+    # 使用配置文件中的URL
+    pass
 
 # 设置日志配置
 if config.config_file_name is not None:
@@ -33,15 +38,7 @@ target_metadata = Base.metadata
 
 
 def run_migrations_offline() -> None:
-    """在'离线'模式下运行迁移
-
-    这将配置上下文，只需要一个URL，而不是一个Engine，
-    尽管在这里也接受Engine。通过跳过Engine的创建，
-    我们甚至不需要DBAPI来可用。
-
-    在这里调用的脚本的context.to_dict中将包含一个
-    键'url'，它是传递的URL，而不是Engine。
-    """
+    """在'离线'模式下运行迁移"""
     url = config.get_main_option("sqlalchemy.url")
     context.configure(
         url=url,
@@ -63,10 +60,6 @@ def do_run_migrations(connection: Connection) -> None:
         target_metadata=target_metadata,
         compare_type=True,
         compare_server_default=True,
-        # 包含表注释
-        include_object=include_object,
-        # 渲染项目
-        render_item=render_item,
     )
 
     with context.begin_transaction():
@@ -75,24 +68,21 @@ def do_run_migrations(connection: Connection) -> None:
 
 async def run_async_migrations() -> None:
     """在异步上下文中运行迁移"""
-    connectable = async_engine_from_config(
-        config.get_section(config.config_ini_section, {}),
-        prefix="sqlalchemy.",
-        poolclass=pool.NullPool,
-    )
+    # 使用同步URL创建引擎用于Alembic
+    sync_url = config.get_main_option("sqlalchemy.url")
 
-    async with connectable.connect() as connection:
-        await connection.run_sync(do_run_migrations)
+    # 创建同步引擎
+    from sqlalchemy import create_engine
+    engine = create_engine(sync_url, poolclass=pool.NullPool)
 
-    await connectable.dispose()
+    with engine.connect() as connection:
+        do_run_migrations(connection)
+
+    engine.dispose()
 
 
 def run_migrations_online() -> None:
-    """在'在线'模式下运行迁移
-
-    在这里情况下，我们需要创建一个Engine并将连接
-    与上下文关联。
-    """
+    """在'在线'模式下运行迁移"""
     asyncio.run(run_async_migrations())
 
 
@@ -101,24 +91,7 @@ def include_object(object, name, type_, reflected, compare_to):
     # 排除某些表
     if type_ == "table" and name in ["alembic_version"]:
         return False
-    # 排除某些视图
-    if type_ == "view" and name.startswith("pg_"):
-        return False
     return True
-
-
-def render_item(type_, obj, autogen_context):
-    """自定义渲染数据库项"""
-    # 为表添加注释
-    if type_ == "table" and hasattr(obj, 'info') and 'comment' in obj.info:
-        autogen_context.opts['render_item'].append(obj.info['comment'])
-
-    # 为列添加注释
-    if type_ == "column" and hasattr(obj, 'comment') and obj.comment:
-        autogen_context.opts['render_item'].append(obj.comment)
-
-    # 默认渲染
-    return False
 
 
 # 运行迁移

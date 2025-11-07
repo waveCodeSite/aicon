@@ -20,30 +20,14 @@ async def logging_middleware(request: Request, call_next: Callable) -> Response:
     start_time = time.time()
 
     # 记录请求开始
-    logger.info(
-        "HTTP请求开始",
-        request_id=request_id,
-        method=request.method,
-        path=request.url.path,
-        query_params=str(request.query_params) if request.query_params else None,
-        client_ip=request.client.host if request.client else None,
-        user_agent=request.headers.get("user-agent"),
-    )
+    logger.info(f"HTTP请求开始 - {request.method} {request.url.path}")
 
     try:
         response = await call_next(request)
         process_time = time.time() - start_time
 
         # 记录请求完成
-        logger.info(
-            "HTTP请求完成",
-            request_id=request_id,
-            method=request.method,
-            path=request.url.path,
-            status_code=response.status_code,
-            duration=f"{process_time:.3f}s",
-            response_size=response.headers.get("content-length"),
-        )
+        logger.info(f"HTTP请求完成 - {request.method} {request.url.path} - {response.status_code} - {process_time:.3f}s")
 
         # 添加响应头
         response.headers["X-Request-ID"] = request_id
@@ -55,15 +39,7 @@ async def logging_middleware(request: Request, call_next: Callable) -> Response:
         process_time = time.time() - start_time
 
         # 记录请求异常
-        logger.error(
-            "HTTP请求异常",
-            request_id=request_id,
-            method=request.method,
-            path=request.url.path,
-            duration=f"{process_time:.3f}s",
-            exception_type=type(exc).__name__,
-            exception_message=str(exc),
-        )
+        logger.error(f"HTTP请求异常 - {request.method} {request.url.path} - {type(exc).__name__}: {str(exc)} - {process_time:.3f}s")
 
         raise
 
@@ -126,38 +102,17 @@ async def performance_monitoring_middleware(request: Request, call_next: Callabl
 
         # 监控慢请求（超过2秒）
         if process_time > 2.0:
-            logger.warning(
-                "慢请求警告",
-                request_id=request_id,
-                method=request.method,
-                path=request.url.path,
-                duration=f"{process_time:.3f}s",
-                status_code=response.status_code,
-            )
+            logger.warning(f"慢请求警告 - {request.method} {request.url.path} - {process_time:.3f}s")
 
         # 监控非常慢请求（超过5秒）
         if process_time > 5.0:
-            logger.error(
-                "非常慢请求",
-                request_id=request_id,
-                method=request.method,
-                path=request.url.path,
-                duration=f"{process_time:.3f}s",
-                status_code=response.status_code,
-            )
+            logger.error(f"非常慢请求 - {request.method} {request.url.path} - {process_time:.3f}s")
 
         return response
 
     except Exception as exc:
         process_time = time.time() - start_time
-        logger.error(
-            "请求处理异常",
-            request_id=request_id,
-            method=request.method,
-            path=request.url.path,
-            duration=f"{process_time:.3f}s",
-            exception_type=type(exc).__name__,
-        )
+        logger.error(f"请求处理异常 - {request.method} {request.url.path} - {type(exc).__name__}: {str(exc)} - {process_time:.3f}s")
         raise
 
 

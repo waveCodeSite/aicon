@@ -25,7 +25,7 @@ async def auth_middleware(request: Request, call_next: Callable) -> Response:
 
     # 检查Bearer token格式
     if not authorization.startswith("Bearer "):
-        logger.warning("无效的Authorization头格式", path=request.url.path)
+        logger.warning(f"无效的Authorization头格式 - 路径: {request.url.path}")
         return await call_next(request)
 
     token = authorization.split(" ")[1]
@@ -39,17 +39,13 @@ async def auth_middleware(request: Request, call_next: Callable) -> Response:
         request.state.username = payload.get("username")
 
         logger.debug(
-            "用户认证成功",
-            user_id=request.state.user_id,
-            username=request.state.username,
-            path=request.url.path
+            f"用户认证成功 - 用户ID: {request.state.user_id} - "
+            f"用户名: {request.state.username} - 路径: {request.url.path}"
         )
 
     except TokenError as e:
         logger.warning(
-            "Token验证失败",
-            error=str(e),
-            path=request.url.path
+            f"Token验证失败 - {str(e)} - 路径: {request.url.path}"
         )
 
         # 返回401未授权错误
@@ -63,9 +59,7 @@ async def auth_middleware(request: Request, call_next: Callable) -> Response:
         )
     except Exception as e:
         logger.error(
-            "认证中间件异常",
-            error=str(e),
-            path=request.url.path,
+            f"认证中间件异常 - {str(e)} - 路径: {request.url.path}",
             exc_info=True
         )
 

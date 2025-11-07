@@ -22,14 +22,9 @@ async def error_handler_middleware(request: Request, call_next: Callable) -> Res
     except AICGException as exc:
         # 处理自定义异常
         logger.error(
-            "AICG应用异常",
-            exception_type=type(exc).__name__,
-            message=exc.message,
-            error_code=exc.error_code,
-            status_code=exc.status_code,
-            details=exc.details,
-            path=request.url.path,
-            method=request.method,
+            f"AICG应用异常 - {type(exc).__name__}: {exc.message} - "
+            f"错误码: {exc.error_code} - 状态码: {exc.status_code} - "
+            f"路径: {request.method} {request.url.path}"
         )
 
         return JSONResponse(
@@ -46,12 +41,9 @@ async def error_handler_middleware(request: Request, call_next: Callable) -> Res
     except Exception as exc:
         # 处理未知异常
         logger.error(
-            "未处理的异常",
-            exception_type=type(exc).__name__,
-            message=str(exc),
-            path=request.url.path,
-            method=request.method,
-            exc_info=True,
+            f"未处理的异常 - {type(exc).__name__}: {str(exc)} - "
+            f"路径: {request.method} {request.url.path}",
+            exc_info=True
         )
 
         return JSONResponse(

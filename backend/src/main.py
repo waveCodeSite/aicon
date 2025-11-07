@@ -97,8 +97,8 @@ async def startup_event():
     app_logger.info(f"📝 环境: {settings.ENVIRONMENT}")
     app_logger.info(f"🌐 调试模式: {settings.DEBUG}")
     app_logger.info(f"📊 监控: {settings.PROMETHEUS_ENABLED}")
-    app_logger.info(f"🔗 API地址: http://0.0.0.0:8001")
-    app_logger.info(f"📖 API文档: http://0.0.0.0:8001/docs")
+    app_logger.info(f"🔗 API地址: http://0.0.0.0:8000")
+    app_logger.info(f"📖 API文档: http://0.0.0.0:8000/docs")
 
     # 这里可以添加其他启动逻辑
     # 例如: 检查数据库连接、预热缓存等
