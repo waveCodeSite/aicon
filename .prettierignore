@@ -1,0 +1,66 @@
+# Dependencies
+node_modules/
+dist/
+build/
+
+# Testing
+/coverage/
+/test-results/
+/playwright-report/
+
+# Generated files
+*.generated.*
+generated_images/
+*.min.js
+*.min.css
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# Package managers
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# OS
+.DS_Store
+.DS_Store?
+
+# IDE
+.vscode/
+.idea/
+
+# Public directory
+/public/
+
+# Configuration files
+*.config.js
+*.config.ts
+
+# Documentation
+*.md
+docs/
+
+# Python related (if any)
+__pycache__/
+*.pyc
+
+# Large media files
+*.mp4
+*.avi
+*.mov
+*.mkv
+*.flv
+*.wmv
+*.webm
+*.mp3
+*.wav
+*.flac
+*.aac
+*.ogg

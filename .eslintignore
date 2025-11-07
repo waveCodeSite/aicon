@@ -1,0 +1,44 @@
+# Dependencies
+node_modules/
+dist/
+build/
+
+# Production
+/dist/
+
+# Testing
+/coverage/
+/test-results/
+/playwright-report/
+
+# Generated files
+*.generated.*
+generated_images/
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# OS
+.DS_Store
+.DS_Store?
+
+# IDE
+.vscode/
+.idea/
+
+# Python related (if any)
+__pycache__/
+*.pyc
+
+# Public directory (if static assets)
+/public/
+
+# Configuration files
+*.config.js
+*.config.ts
