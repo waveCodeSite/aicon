@@ -105,7 +105,7 @@ test-integration: ## 运行集成测试
 
 test-fast: ## 运行快速测试 (排除慢速测试)
 	@echo "$(BLUE)🏃 运行快速测试...$(RESET)"
-	$(UV) run pytest -m "not slow" 
+	$(UV) run pytest -m "not slow"
 
 lint: ## 运行代码检查和格式化
 	@echo "$(BLUE)🔍 代码检查和格式化...$(RESET)"
