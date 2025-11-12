@@ -1,65 +1,62 @@
 <template>
   <div class="projects-page">
-    <!-- 统一导航头部 -->
-    <PageNavigation
-      :title="pageTitle"
-      description="管理和查看您的所有项目"
-      :back-text="'返回控制台'"
-      :back-path="goToDashboard"
-      :show-user-info="true"
-      :show-icon="true"
-      :title-icon="Folder"
-      :breadcrumbs="breadcrumbs"
-    >
-      <template #extra>
-        <!-- 搜索框 -->
-        <el-input
-          v-model="searchQuery"
-          placeholder="搜索项目标题或描述..."
-          :prefix-icon="Search"
-          clearable
-          @input="handleSearch"
-          style="width: 240px"
-        />
+    <!-- 页面头部信息 -->
+    <div class="page-header">
+      <h1 class="page-title">项目管理</h1>
+      <p class="page-description">管理和查看您的所有项目</p>
+    </div>
 
-        <!-- 状态筛选 -->
-        <el-select
-          v-model="statusFilter"
-          placeholder="状态筛选"
-          clearable
-          @change="handleStatusFilter"
-          style="width: 120px"
-        >
-          <el-option label="全部" value="" />
-          <el-option label="草稿" value="draft" />
-          <el-option label="处理中" value="processing" />
-          <el-option label="已完成" value="completed" />
-          <el-option label="失败" value="failed" />
-          <el-option label="已归档" value="archived" />
-        </el-select>
+    <!-- 操作栏 -->
+    <div class="actions-bar">
+      <!-- 搜索框 -->
+      <el-input
+        v-model="searchQuery"
+        placeholder="搜索项目标题或描述..."
+        :prefix-icon="Search"
+        clearable
+        @input="handleSearch"
+        style="width: 240px"
+      />
 
-        <!-- 排序方式 -->
-        <el-select
-          v-model="sortBy"
-          placeholder="排序方式"
-          @change="handleSort"
-          style="width: 120px"
-        >
-          <el-option label="创建时间" value="created_at" />
-          <el-option label="标题" value="title" />
-          <el-option label="更新时间" value="updated_at" />
-          <el-option label="文件大小" value="file_size" />
-        </el-select>
+      <!-- 状态筛选 -->
+      <el-select
+        v-model="statusFilter"
+        placeholder="状态筛选"
+        clearable
+        @change="handleStatusFilter"
+        style="width: 120px"
+      >
+        <el-option label="全部" value="" />
+        <el-option label="草稿" value="draft" />
+        <el-option label="处理中" value="processing" />
+        <el-option label="已完成" value="completed" />
+        <el-option label="失败" value="failed" />
+        <el-option label="已归档" value="archived" />
+      </el-select>
 
-        <!-- 操作按钮 -->
+      <!-- 排序方式 -->
+      <el-select
+        v-model="sortBy"
+        placeholder="排序方式"
+        @change="handleSort"
+        style="width: 120px"
+      >
+        <el-option label="创建时间" value="created_at" />
+        <el-option label="标题" value="title" />
+        <el-option label="更新时间" value="updated_at" />
+        <el-option label="文件大小" value="file_size" />
+      </el-select>
+
+      <!-- 操作按钮 -->
+      <div class="action-buttons">
         <el-button type="primary" @click="handleCreateProject" :icon="Plus">
           新建项目
         </el-button>
         <el-button @click="handleRefreshProjects" :icon="Refresh">
           刷新
         </el-button>
-      </template>
-    </PageNavigation>
+      </div>
+    </div>
 
     <!-- 项目列表视图 -->
     <div v-if="currentView === 'list'" class="list-view">
@@ -150,10 +147,9 @@
 <script setup>
   import { computed, onMounted, ref, watch } from 'vue'
   import { ElMessage, ElMessageBox } from 'element-plus'
-  import { Plus, Refresh, House, Folder, Search } from '@element-plus/icons-vue'
+  import { Plus, Refresh, Search } from '@element-plus/icons-vue'
 
   // 组件导入
-  import PageNavigation from '@/components/common/PageNavigation.vue'
   import ProjectList from '@/components/project/ProjectList.vue'
   import ProjectDetail from '@/components/project/ProjectDetail.vue'
   import ProjectCreator from '@/components/project/ProjectCreator.vue'
@@ -201,29 +197,7 @@
   const sortBy = ref('created_at')
   const sortOrder = ref('desc')
 
-  // 计算属性
-  const pageTitle = computed(() => {
-    if (currentView.value === 'detail' && selectedProject.value) {
-      return selectedProject.value.title
-    }
-    return '项目管理'
-  })
-
-  // 面包屑导航
-  const breadcrumbs = computed(() => {
-    if (currentView.value === 'detail' && selectedProject.value) {
-      return [
-        { title: '首页', path: '/dashboard', icon: House },
-        { title: '项目管理', path: '/projects' },
-        { title: selectedProject.value.title }
-      ]
-    }
-    return [
-      { title: '首页', path: '/dashboard', icon: House },
-      { title: '项目管理' }
-    ]
-  })
-
+  
   // 监听路由参数变化
   watch(() => selectedProjectId.value, (newId) => {
     if (newId) {
@@ -446,11 +420,6 @@
     handleViewProject(row)
   }
 
-  const goToDashboard = () => {
-    // 返回控制台
-    window.location.href = '/dashboard'
-  }
-
   const handleRefreshProjects = () => {
     loadProjects()
   }
@@ -493,38 +462,140 @@
 </script>
 
 <style scoped>
-  .projects-page {
-    @apply min-h-screen bg-gray-50;
+.projects-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+.page-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.page-title {
+  font-size: var(--text-2xl);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+  line-height: 1.2;
+}
+
+.page-description {
+  font-size: var(--text-base);
+  color: var(--text-secondary);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.actions-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-lg);
+  background: var(--bg-secondary);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border-primary);
+  flex-wrap: wrap;
+}
+
+.action-buttons {
+  display: flex;
+  gap: var(--space-sm);
+  margin-left: auto;
+}
+
+.list-view {
+  background: var(--bg-primary);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border-primary);
+  overflow: hidden;
+}
+
+.detail-view {
+  background: var(--bg-primary);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border-primary);
+  overflow: hidden;
+}
+
+.content-loading {
+  padding: var(--space-lg);
+}
+
+.content-preview {
+  max-height: 96vh;
+  overflow: auto;
+  padding: var(--space-lg);
+}
+
+.file-content {
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  line-height: 1.6;
+  white-space: pre-wrap;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+  background: var(--bg-secondary);
+  padding: var(--space-lg);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-primary);
+}
+
+.content-error {
+  padding: var(--space-lg);
+}
+
+/* 响应式设计 */
+@media (max-width: 968px) {
+  .actions-bar {
+    padding: var(--space-md);
   }
 
-  .list-view {
-    @apply container mx-auto px-4 py-6;
+  .action-buttons {
+    width: 100%;
+    margin-left: 0;
+    margin-top: var(--space-md);
+    justify-content: flex-end;
+  }
+}
+
+@media (max-width: 768px) {
+  .page-title {
+    font-size: var(--text-xl);
   }
 
+  .page-description {
+    font-size: var(--text-sm);
+  }
+
+  .actions-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-sm);
+  }
+
+  .action-buttons {
+    margin-top: var(--space-sm);
+  }
+
+  .action-buttons :deep(.el-button) {
+    flex: 1;
+  }
+}
+
+/* 深色主题 */
+@media (prefers-color-scheme: dark) {
+  .actions-bar,
+  .list-view,
   .detail-view {
-    @apply min-h-screen bg-white;
-  }
-
-  .content-loading {
-    @apply p-6;
-  }
-
-  .content-preview {
-    @apply max-h-96 overflow-auto;
+    background: var(--bg-dark);
+    border-color: var(--border-primary);
   }
 
   .file-content {
-    @apply text-sm text-gray-700 leading-relaxed whitespace-pre-wrap;
-    font-family: 'Courier New', monospace;
+    background: var(--bg-dark);
+    border-color: var(--border-primary);
   }
-
-  .content-error {
-    @apply p-6;
-  }
-
-  @media (max-width: 768px) {
-    .list-view {
-      @apply px-2 py-4;
-    }
-  }
+}
 </style>
