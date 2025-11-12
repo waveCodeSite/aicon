@@ -232,32 +232,32 @@ provide('headerActions', [
 .page-header {
   display: flex;
   flex-direction: column;
-  gap: var(--space-xs);
+  gap: 4px;
 }
 
 .page-title {
   display: flex;
   align-items: center;
-  gap: var(--space-md);
-  font-size: var(--text-2xl);
+  gap: var(--space-sm);
+  font-size: var(--text-xl);
   font-weight: 700;
   color: var(--text-primary);
   margin: 0;
 }
 
 .title-icon {
-  font-size: 28px;
+  font-size: 20px;
   color: var(--primary-color);
-  padding: var(--space-sm);
+  padding: 6px;
   background: rgba(99, 102, 241, 0.1);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
 }
 
 .page-description {
-  font-size: var(--text-base);
+  font-size: var(--text-sm);
   color: var(--text-secondary);
   margin: 0;
-  line-height: 1.5;
+  line-height: 1.4;
 }
 
 /* 快速操作入口 */
@@ -582,16 +582,21 @@ provide('headerActions', [
 }
 
 @media (max-width: 768px) {
+  .page-header {
+    gap: 2px;
+  }
+
   .page-title {
-    font-size: var(--text-xl);
+    font-size: var(--text-lg);
   }
 
   .title-icon {
-    font-size: 24px;
+    font-size: 16px;
+    padding: 4px;
   }
 
   .page-description {
-    font-size: var(--text-sm);
+    font-size: var(--text-xs);
   }
 
   .action-grid {

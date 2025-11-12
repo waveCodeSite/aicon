@@ -27,11 +27,12 @@
         style="width: 120px"
       >
         <el-option label="全部" value="" />
-        <el-option label="草稿" value="draft" />
-        <el-option label="处理中" value="processing" />
+        <el-option label="已上传" value="uploaded" />
+        <el-option label="解析中" value="parsing" />
+        <el-option label="解析完成" value="parsed" />
+        <el-option label="生成中" value="generating" />
         <el-option label="已完成" value="completed" />
         <el-option label="失败" value="failed" />
-        <el-option label="已归档" value="archived" />
       </el-select>
 
       <!-- 排序方式 -->
@@ -341,10 +342,8 @@
 
   const handleArchiveProject = async (project) => {
     try {
-      const isArchive = project.status !== 'archived'
-      await projectsStore.archiveProject(project.id, isArchive)
-      ElMessage.success(isArchive ? '项目已归档' : '项目已取消归档')
-      loadProjects()
+      // 由于后端没有归档状态，暂时显示提示信息
+      ElMessage.info('归档功能即将上线，敬请期待')
     } catch (error) {
       console.error('归档项目失败:', error)
       ElMessage.error('归档项目失败')
@@ -471,7 +470,7 @@
 }
 
 .page-title {
-  font-size: var(--text-2xl);
+  font-size: var(--text-xl);
   font-weight: 700;
   color: var(--text-primary);
   margin: 0;
@@ -479,10 +478,10 @@
 }
 
 .page-description {
-  font-size: var(--text-base);
+  font-size: var(--text-sm);
   color: var(--text-secondary);
   margin: 0;
-  line-height: 1.5;
+  line-height: 1.4;
 }
 
 .actions-bar {
@@ -557,12 +556,16 @@
 }
 
 @media (max-width: 768px) {
+  .page-header {
+    gap: 2px;
+  }
+
   .page-title {
-    font-size: var(--text-xl);
+    font-size: var(--text-lg);
   }
 
   .page-description {
-    font-size: var(--text-sm);
+    font-size: var(--text-xs);
   }
 
   .actions-bar {

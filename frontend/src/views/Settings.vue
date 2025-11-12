@@ -1,9 +1,12 @@
 <template>
   <div class="settings-page">
-    <!-- 页面标题 -->
+    <!-- 页面头部信息 -->
     <div class="page-header">
-      <h1>系统设置</h1>
-      <p>管理您的账户和应用程序设置</p>
+      <h1 class="page-title">
+        <el-icon class="title-icon"><Setting /></el-icon>
+        系统设置
+      </h1>
+      <p class="page-description">管理您的账户和应用程序设置</p>
     </div>
 
     <div class="settings-content">
@@ -853,24 +856,7 @@ onMounted(async () => {
   gap: var(--space-xl);
 }
 
-.page-header {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xs);
-}
-
-.page-header h1 {
-  font-size: var(--text-2xl);
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0;
-}
-
-.page-header p {
-  font-size: var(--text-base);
-  color: var(--text-secondary);
-  margin: 0;
-}
+/* page-header样式现在使用全局main.css中的优化样式 */
 
 .settings-content {
   background: var(--bg-secondary);

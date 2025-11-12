@@ -27,7 +27,7 @@ export const projectsService = {
   },
 
   /**
-   * 创建新项目
+   * 创建新项目（支持文件信息）
    * @param {Object} projectData - 项目数据
    * @returns {Promise} 创建的项目
    */
@@ -52,6 +52,33 @@ export const projectsService = {
    */
   async deleteProject(projectId) {
     return await del(`/projects/${projectId}`)
+  },
+
+  /**
+   * 获取项目文件内容
+   * @param {string} projectId - 项目ID
+   * @returns {Promise} 文件内容
+   */
+  async getProjectFileContent(projectId) {
+    return await get(`/projects/${projectId}/content`)
+  },
+
+  /**
+   * 下载项目文件
+   * @param {string} projectId - 项目ID
+   * @returns {Promise} 下载结果
+   */
+  async downloadProjectFile(projectId) {
+    return await get(`/projects/${projectId}/download`)
+  },
+
+  /**
+   * 复制项目
+   * @param {string} projectId - 项目ID
+   * @returns {Promise} 复制的项目
+   */
+  async duplicateProject(projectId) {
+    return await post(`/projects/${projectId}/duplicate`)
   }
 }
 

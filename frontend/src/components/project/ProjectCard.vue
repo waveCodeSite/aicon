@@ -62,6 +62,9 @@
           <el-text size="small" type="info">
             {{ formatFileSize(project.file_size) }}
           </el-text>
+          <el-text size="small" type="info" v-if="project.file_hash">
+            已验证
+          </el-text>
         </div>
       </div>
 
@@ -299,84 +302,290 @@ const formatDateTime = (dateTime) => {
 
 <style scoped>
 .project-card {
-  @apply bg-white rounded-lg border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all duration-200 cursor-pointer overflow-hidden;
-  height: 320px;
+  background: var(--bg-primary);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border-primary);
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-base);
+  cursor: pointer;
+  overflow: hidden;
+  height: 420px;
   display: flex;
   flex-direction: column;
+  position: relative;
+}
+
+.project-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--primary-color);
+}
+
+.project-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--primary-color), var(--primary-hover));
+  opacity: 0;
+  transition: opacity var(--transition-base);
+}
+
+.project-card:hover::before {
+  opacity: 1;
 }
 
 .card-header {
-  @apply flex items-center justify-between p-4 pb-2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-lg) var(--space-lg) var(--space-md);
 }
 
 .file-icon {
-  @apply flex items-center justify-center w-12 h-12 rounded-lg bg-gray-50;
-}
-
-.card-actions {
-  @apply opacity-0 hover:opacity-100 transition-opacity duration-200;
-}
-
-.project-card:hover .card-actions {
-  @apply opacity-100;
-}
-
-.card-content {
-  @apply flex-1 px-4 pb-2;
-}
-
-.project-title {
-  @apply text-base font-semibold text-gray-900 truncate mb-1;
-  line-height: 1.4;
-}
-
-.project-description {
-  @apply text-sm text-gray-600 line-clamp-2 mb-3;
-  line-height: 1.5;
-  height: 2.8em;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.1));
+  box-shadow: var(--shadow-sm);
+  position: relative;
   overflow: hidden;
 }
 
+.file-icon::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.1) 0%, transparent 70%);
+  animation: pulse 3s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(0.8); opacity: 0.5; }
+  50% { transform: scale(1.2); opacity: 0.8; }
+}
+
+.card-actions {
+  opacity: 0;
+  transition: opacity var(--transition-base);
+}
+
+.project-card:hover .card-actions {
+  opacity: 1;
+}
+
+.card-content {
+  flex: 1;
+  padding: 0 var(--space-lg) var(--space-sm);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  overflow: hidden;
+}
+
+.project-title {
+  font-size: var(--text-base);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+  flex-shrink: 0;
+}
+
+.project-description {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  line-height: 1.4;
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
 .file-info {
-  @apply mb-3;
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
 }
 
 .info-item {
-  @apply flex items-center gap-2;
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.info-item .el-text {
+  font-size: var(--text-xs);
+  font-weight: 500;
 }
 
 .stats-info {
-  @apply flex items-center gap-4 mb-3;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-sm);
+  padding: var(--space-sm);
+  background: var(--bg-secondary);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-primary);
+  flex-shrink: 0;
 }
 
 .stat-item {
-  @apply flex flex-col items-center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.stat-item .el-text:first-child {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--primary-color);
+  line-height: 1;
+}
+
+.stat-item .el-text:last-child {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  margin-top: 1px;
+  font-weight: 500;
 }
 
 .status-tags {
-  @apply flex flex-wrap gap-1 mb-3;
+  display: flex;
+  gap: var(--space-sm);
+  align-items: center;
 }
 
 .progress-section {
-  @apply space-y-2;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.progress-section .el-progress {
+  --el-progress-bg-color: var(--bg-secondary);
+  --el-progress-border-radius: var(--radius-full);
 }
 
 .card-footer {
-  @apply px-4 py-3 border-t border-gray-100 bg-gray-50;
+  padding: var(--space-sm) var(--space-lg) var(--space-md);
+  background: linear-gradient(180deg, transparent, rgba(99, 102, 241, 0.02));
+  border-top: 1px solid var(--border-primary);
+  margin-top: auto;
+  flex-shrink: 0;
 }
 
 .time-info {
-  @apply flex justify-between text-xs text-gray-500 mb-3;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-md);
+}
+
+.time-info .el-text {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
 }
 
 .action-buttons {
-  @apply flex gap-2 justify-end;
+  display: flex;
+  gap: var(--space-sm);
+  justify-content: space-between;
 }
 
 .action-buttons .el-button {
-  @apply flex-1;
+  flex: 1;
+  border-radius: var(--radius-lg);
+  font-weight: 600;
+  font-size: var(--text-sm);
+  transition: all var(--transition-base);
+}
+
+.action-buttons .el-button--primary {
+  background: linear-gradient(135deg, var(--primary-color), var(--primary-hover));
+  border: none;
+  box-shadow: var(--shadow-sm);
+}
+
+.action-buttons .el-button--primary:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.action-buttons .el-button--default {
+  border-color: var(--border-primary);
+  background: var(--bg-secondary);
+}
+
+.action-buttons .el-button--default:hover {
+  border-color: var(--primary-color);
+  background: rgba(99, 102, 241, 0.05);
+}
+
+/* 深色主题适配 */
+@media (prefers-color-scheme: dark) {
+  .file-icon {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(139, 92, 246, 0.2));
+  }
+
+  .card-footer {
+    background: linear-gradient(180deg, transparent, rgba(99, 102, 241, 0.05));
+  }
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .project-card {
+    height: 340px;
+  }
+
+  .file-icon {
+    width: 48px;
+    height: 48px;
+  }
+
+  .card-header {
+    padding: var(--space-md) var(--space-md) var(--space-sm);
+  }
+
+  .card-content {
+    padding: 0 var(--space-md) var(--space-sm);
+  }
+
+  .card-footer {
+    padding: var(--space-sm) var(--space-md) var(--space-md);
+  }
+
+  .stats-info {
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-sm);
+    padding: var(--space-sm);
+  }
+
+  .project-title {
+    font-size: var(--text-base);
+  }
+
+  .action-buttons {
+    flex-direction: column;
+    gap: var(--space-xs);
+  }
 }
 </style>

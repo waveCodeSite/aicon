@@ -249,6 +249,116 @@ export const useProjectsStore = defineStore('projects', () => {
   }
 
   /**
+   * 获取项目文件内容
+   * @param {string} projectId - 项目ID
+   */
+  const fetchProjectContent = async (projectId) => {
+    try {
+      loading.value = true
+      error.value = null
+
+      // 这里需要实现文件内容获取逻辑
+      // 暂时返回示例内容
+      return await projectsService.getProjectFileContent(projectId)
+
+    } catch (err) {
+      error.value = err.message || '获取文件内容失败'
+      ElMessage.error(error.value)
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /**
+   * 下载项目文件
+   * @param {string} projectId - 项目ID
+   */
+  const downloadProject = async (projectId) => {
+    try {
+      await projectsService.downloadProjectFile(projectId)
+    } catch (err) {
+      error.value = err.message || '下载文件失败'
+      ElMessage.error(error.value)
+      throw err
+    }
+  }
+
+  /**
+   * 复制项目
+   * @param {string} projectId - 项目ID
+   */
+  const duplicateProject = async (projectId) => {
+    try {
+      loading.value = true
+      error.value = null
+
+      const newProject = await projectsService.duplicateProject(projectId)
+
+      // 添加到列表开头
+      projects.value.unshift(newProject)
+      pagination.value.total += 1
+
+      ElMessage.success('项目复制成功')
+      return newProject
+
+    } catch (err) {
+      error.value = err.message || '复制项目失败'
+      ElMessage.error(error.value)
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /**
+   * 归档项目
+   * @param {string} projectId - 项目ID
+   * @param {boolean} isArchive - 是否归档
+   */
+  const archiveProject = async (projectId, isArchive = true) => {
+    try {
+      loading.value = true
+      error.value = null
+
+      // 归档功能待实现，暂时抛出友好提示
+      throw new Error('归档功能即将上线，敬请期待')
+
+    } catch (err) {
+      error.value = err.message || '归档项目失败'
+      ElMessage.info(error.value) // 显示为信息提示而非错误
+      // 不抛出错误，避免中断用户体验
+    }
+  }
+
+  /**
+   * 重新处理项目
+   * @param {string} projectId - 项目ID
+   */
+  const reprocessProject = async (projectId) => {
+    try {
+      loading.value = true
+      error.value = null
+
+      // 这里需要实现重新处理逻辑
+      const updateData = {
+        status: 'parsing',
+        processing_progress: 0,
+        error_message: null
+      }
+
+      await updateProject(projectId, updateData)
+
+    } catch (err) {
+      error.value = err.message || '重新处理失败'
+      ElMessage.error(error.value)
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /**
    * 重置状态
    */
   const resetState = () => {
@@ -287,9 +397,14 @@ export const useProjectsStore = defineStore('projects', () => {
     // 方法
     fetchProjects,
     fetchProjectById,
+    fetchProjectContent,
     createProject,
     updateProject,
     deleteProject,
+    downloadProject,
+    duplicateProject,
+    archiveProject,
+    reprocessProject,
     setFilters,
     resetState,
 
