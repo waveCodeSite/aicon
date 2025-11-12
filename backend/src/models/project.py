@@ -19,6 +19,7 @@ class ProjectStatus(str, Enum):
     GENERATING = "generating"
     COMPLETED = "completed"
     FAILED = "failed"
+    ARCHIVED = "archived"
 
 
 class Project(BaseModel):
@@ -104,6 +105,16 @@ class Project(BaseModel):
                 self.status in [ProjectStatus.UPLOADED, ProjectStatus.FAILED] and
                 self.file_path and self.file_type in ["txt", "md", "docx", "epub"]
         )
+
+    def is_archived(self) -> bool:
+        """检查项目是否已归档 - 按照data-model.md规范"""
+        return self.status == ProjectStatus.ARCHIVED
+
+    def archive_project(self) -> None:
+        """归档项目（不可逆操作）- 按照data-model.md规范"""
+        self.status = ProjectStatus.ARCHIVED
+        self.processing_progress = 0
+        # 注意：这里需要与任务队列集成来停止正在进行的任务
 
     @classmethod
     async def get_by_owner_id(cls, db_session, owner_id: str):

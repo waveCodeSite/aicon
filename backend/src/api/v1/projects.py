@@ -32,6 +32,12 @@ class ProjectCreate(BaseModel):
     file_hash: Optional[str] = Field(None, max_length=64, description="文件MD5哈希")
 
 
+class ProjectUpdate(BaseModel):
+    """更新项目请求模型 - 只允许编辑标题和描述"""
+    title: Optional[str] = Field(None, min_length=1, max_length=200, description="项目标题")
+    description: Optional[str] = Field(None, max_length=1000, description="项目描述")
+
+
 class ProjectResponse(BaseModel):
     """项目响应模型"""
     id: str
@@ -205,9 +211,9 @@ async def update_project(
         current_user: User = Depends(get_current_user_required),
         db: AsyncSession = Depends(get_db),
         project_id: str,
-        project_data: ProjectCreate
+        project_data: ProjectUpdate
 ):
-    """更新项目信息"""
+    """更新项目信息（仅标题和描述）"""
     try:
         project_service = ProjectService(db)
 
@@ -244,6 +250,40 @@ async def update_project(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="更新项目失败"
+        )
+
+
+@router.put("/{project_id}/archive", response_model=ProjectResponse)
+async def archive_project(
+        *,
+        current_user: User = Depends(get_current_user_required),
+        db: AsyncSession = Depends(get_db),
+        project_id: str
+):
+    """归档项目（不可逆操作）"""
+    try:
+        project_service = ProjectService(db)
+
+        project = await project_service.archive_project(
+            project_id=project_id,
+            owner_id=current_user.id
+        )
+
+        if not project:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="项目不存在或无权限"
+            )
+
+        return ProjectResponse(**project.to_dict())
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"归档项目失败: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="归档项目失败"
         )
 
 

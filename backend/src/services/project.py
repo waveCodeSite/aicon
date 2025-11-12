@@ -228,6 +228,45 @@ class ProjectService:
             logger.error(f"更新项目失败: {e}")
             raise ProjectServiceError(f"更新项目失败: {str(e)}")
 
+    async def archive_project(
+            self,
+            project_id: str,
+            owner_id: str
+    ) -> Optional[Project]:
+        """
+        归档项目（不可逆操作）
+
+        Args:
+            project_id: 项目ID
+            owner_id: 所有者ID
+
+        Returns:
+            归档后的项目
+        """
+        try:
+            project = await self.get_project_by_id(project_id, owner_id)
+            if not project:
+                raise ProjectServiceError(f"项目不存在或无权限: {project_id}")
+
+            # 检查是否已归档
+            if project.is_archived():
+                raise ProjectServiceError(f"项目已经归档: {project_id}")
+
+            # 执行归档操作
+            project.archive_project()
+            await self.db_session.commit()
+            await self.db_session.refresh(project)
+
+            logger.info(f"归档项目成功: {project_id}")
+            return project
+
+        except ProjectServiceError:
+            raise
+        except Exception as e:
+            await self.db_session.rollback()
+            logger.error(f"归档项目失败: {e}")
+            raise ProjectServiceError(f"归档项目失败: {str(e)}")
+
     async def delete_project(
             self,
             project_id: str,
