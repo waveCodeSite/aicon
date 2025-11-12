@@ -65,18 +65,43 @@
 
     <!-- 面包屑导航 -->
     <div v-if="breadcrumbs && breadcrumbs.length > 0" class="breadcrumb-container">
-      <el-breadcrumb separator="/">
-        <el-breadcrumb-item
-          v-for="(item, index) in breadcrumbs"
-          :key="index"
-          :to="item.path"
-        >
-          <el-icon v-if="item.icon" class="breadcrumb-icon">
-            <component :is="item.icon" />
-          </el-icon>
-          {{ item.title }}
-        </el-breadcrumb-item>
-      </el-breadcrumb>
+      <nav class="breadcrumb-nav" aria-label="面包屑导航">
+        <ol class="breadcrumb-list">
+          <li
+            v-for="(item, index) in breadcrumbs"
+            :key="index"
+            class="breadcrumb-item"
+            :class="{ 'is-current': index === breadcrumbs.length - 1 }"
+          >
+            <!-- 非最后一项显示链接 -->
+            <router-link
+              v-if="index < breadcrumbs.length - 1 && item.path"
+              :to="item.path"
+              class="breadcrumb-link"
+            >
+              <el-icon v-if="item.icon" class="breadcrumb-icon">
+                <component :is="item.icon" />
+              </el-icon>
+              <span class="breadcrumb-text">{{ item.title }}</span>
+            </router-link>
+
+            <!-- 最后一项或无路径时显示纯文本 -->
+            <span v-else class="breadcrumb-current">
+              <el-icon v-if="item.icon" class="breadcrumb-icon">
+                <component :is="item.icon" />
+              </el-icon>
+              <span class="breadcrumb-text">{{ item.title }}</span>
+            </span>
+
+            <!-- 分隔符 -->
+            <span v-if="index < breadcrumbs.length - 1" class="breadcrumb-separator">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/>
+              </svg>
+            </span>
+          </li>
+        </ol>
+      </nav>
     </div>
   </div>
 </template>
@@ -399,16 +424,123 @@ const handleLogout = async () => {
   color: var(--danger-color);
 }
 
+/* 面包屑样式 - 更优雅的设计 */
 .breadcrumb-container {
-  padding: var(--space-md) var(--space-xl) var(--space-lg);
-  background: linear-gradient(135deg, var(--bg-primary), rgba(99, 102, 241, 0.02));
-  border-top: 1px solid var(--border-primary);
+  padding: 0 var(--space-xl) var(--space-md);
+  margin-top: var(--space-xs);
+}
+
+.breadcrumb-nav {
+  max-width: 100%;
+}
+
+.breadcrumb-list {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.breadcrumb-item {
+  display: flex;
+  align-items: center;
+  font-size: var(--text-sm);
+}
+
+.breadcrumb-link {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: all var(--transition-base);
+  font-weight: 500;
+}
+
+.breadcrumb-link:hover {
+  color: var(--primary-color);
+  background: rgba(99, 102, 241, 0.08);
+  transform: translateY(-1px);
+}
+
+.breadcrumb-current {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-xs) var(--space-sm);
+  color: var(--text-primary);
+  font-weight: 600;
 }
 
 .breadcrumb-icon {
-  margin-right: var(--space-xs);
-  color: var(--text-secondary);
   font-size: 14px;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.breadcrumb-item:not(.is-current) .breadcrumb-icon {
+  color: var(--text-tertiary);
+}
+
+.breadcrumb-item.is-current .breadcrumb-icon {
+  color: var(--primary-color);
+}
+
+.breadcrumb-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 120px;
+}
+
+.breadcrumb-separator {
+  display: flex;
+  align-items: center;
+  margin: 0 var(--space-xs);
+  color: var(--text-tertiary);
+  opacity: 0.6;
+  transition: opacity var(--transition-base);
+}
+
+.breadcrumb-separator:hover {
+  opacity: 1;
+}
+
+/* 响应式面包屑 */
+@media (max-width: 768px) {
+  .breadcrumb-container {
+    padding: 0 var(--space-md) var(--space-sm);
+  }
+
+  .breadcrumb-text {
+    max-width: 80px;
+  }
+
+  .breadcrumb-link,
+  .breadcrumb-current {
+    padding: var(--space-xs);
+  }
+}
+
+@media (max-width: 480px) {
+  .breadcrumb-text {
+    max-width: 60px;
+  }
+
+  .breadcrumb-separator {
+    margin: 0 var(--space-xs);
+  }
+
+  .breadcrumb-separator svg {
+    width: 14px;
+    height: 14px;
+  }
 }
 
 /* 紧凑模式 */
@@ -425,7 +557,11 @@ const handleLogout = async () => {
 }
 
 .page-navigation.compact .breadcrumb-container {
-  padding: var(--space-sm) var(--space-lg) var(--space-md);
+  padding: 0 var(--space-lg) var(--space-sm);
+}
+
+.page-navigation.compact .breadcrumb-text {
+  max-width: 100px;
 }
 
 /* 响应式设计 */
@@ -509,10 +645,6 @@ const handleLogout = async () => {
     font-size: var(--text-sm);
     max-width: 120px;
   }
-
-  .breadcrumb-container {
-    padding: var(--space-sm) var(--space-md) var(--space-sm);
-  }
 }
 
 /* 动画 */
@@ -542,9 +674,8 @@ const handleLogout = async () => {
     background: linear-gradient(135deg, var(--bg-dark), rgba(99, 102, 241, 0.02));
   }
 
-  .breadcrumb-container {
-    background: linear-gradient(135deg, var(--bg-dark), rgba(99, 102, 241, 0.02));
-    border-top-color: var(--gray-700);
+  .breadcrumb-link:hover {
+    background: rgba(99, 102, 241, 0.12);
   }
 }
 
@@ -561,6 +692,19 @@ const handleLogout = async () => {
   box-shadow: 0 0 0 2px var(--primary-color);
   position: relative;
   z-index: 10;
+}
+
+.breadcrumb-link:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--primary-color);
+  position: relative;
+  z-index: 10;
+}
+
+.breadcrumb-link:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+  border-radius: var(--radius-md);
 }
 
 /* 高对比度模式支持 */
