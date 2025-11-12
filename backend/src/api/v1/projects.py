@@ -25,6 +25,11 @@ class ProjectCreate(BaseModel):
     """创建项目请求模型"""
     title: str = Field(..., min_length=1, max_length=200, description="项目标题")
     description: Optional[str] = Field(None, max_length=1000, description="项目描述")
+    file_name: Optional[str] = Field(None, max_length=255, description="文件名称")
+    file_size: Optional[int] = Field(None, ge=0, description="文件大小（字节）")
+    file_type: Optional[str] = Field(None, pattern="^(txt|md|docx|epub)$", description="文件类型")
+    file_path: Optional[str] = Field(None, max_length=500, description="MinIO存储路径")
+    file_hash: Optional[str] = Field(None, max_length=64, description="文件MD5哈希")
 
 
 class ProjectResponse(BaseModel):
@@ -164,13 +169,18 @@ async def create_project(
         db: AsyncSession = Depends(get_db),
         project_data: ProjectCreate
 ):
-    """创建新项目（基础版本，不包含文件上传）"""
+    """创建新项目（支持文件信息）"""
     try:
         project_service = ProjectService(db)
         project = await project_service.create_project(
             owner_id=current_user.id,
             title=project_data.title,
-            description=project_data.description
+            description=project_data.description,
+            file_name=project_data.file_name,
+            file_size=project_data.file_size,
+            file_type=project_data.file_type,
+            file_path=project_data.file_path,
+            file_hash=project_data.file_hash
         )
 
         return ProjectResponse(**project.to_dict())
