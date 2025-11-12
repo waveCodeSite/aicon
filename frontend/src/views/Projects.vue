@@ -33,6 +33,7 @@
         <el-option label="生成中" value="generating" />
         <el-option label="已完成" value="completed" />
         <el-option label="失败" value="failed" />
+        <el-option label="已归档" value="archived" />
       </el-select>
 
       <!-- 排序方式 -->
@@ -70,6 +71,7 @@
         @edit-project="handleEditProject"
         @delete-project="handleDeleteProject"
         @view-project="handleViewProject"
+        @archive-project="handleArchiveProject"
         @page-change="handlePageChange"
         @size-change="handleSizeChange"
         @row-click="handleRowClick"
@@ -113,6 +115,24 @@
       />
     </el-dialog>
 
+    <!-- 编辑项目对话框 -->
+    <el-dialog
+      v-model="showEditorDialog"
+      title="编辑项目"
+      width="600px"
+      :close-on-click-modal="false"
+      @close="handleEditorClose"
+    >
+      <ProjectEditor
+        ref="projectEditorRef"
+        :project="editingProject"
+        :loading="editorLoading"
+        @submit="handleEditorSubmit"
+        @cancel="handleEditorCancel"
+        @error="handleEditorError"
+      />
+    </el-dialog>
+
     <!-- 文件内容预览对话框 -->
     <el-dialog
       v-model="showContentDialog"
@@ -151,6 +171,7 @@
   import ProjectList from '@/components/project/ProjectList.vue'
   import ProjectDetail from '@/components/project/ProjectDetail.vue'
   import ProjectCreator from '@/components/project/ProjectCreator.vue'
+  import ProjectEditor from '@/components/project/ProjectEditor.vue'
 
   // 状态管理导入
   import { useProjectsStore } from '@/stores/projects'
@@ -167,11 +188,17 @@
 
   // 对话框状态
   const showCreatorDialog = ref(false)
+  const showEditorDialog = ref(false)
   const showContentDialog = ref(false)
 
   // 创建器状态
   const projectCreatorRef = ref()
   const creatorLoading = ref(false)
+
+  // 编辑器状态
+  const projectEditorRef = ref()
+  const editorLoading = ref(false)
+  const editingProject = ref(null)
 
   // 列表状态
   const loading = ref(false)
@@ -275,8 +302,8 @@
   }
 
   const handleEditProject = (project) => {
-    // 导航到项目详情页面进行编辑
-    handleViewProject(project)
+    editingProject.value = project
+    showEditorDialog.value = true
   }
 
   const handleDeleteProject = async (project) => {
@@ -419,6 +446,77 @@
   const handleCreatorError = (error) => {
     console.error('创建器错误:', error)
     ElMessage.error(error.message || '创建器处理失败')
+  }
+
+  // 归档功能处理
+  const handleArchiveProject = async (project) => {
+    try {
+      await ElMessageBox.confirm(
+        `确定要归档项目 "${project.title}" 吗？归档后项目将停止所有处理任务，此操作不可恢复。`,
+        '确认归档',
+        {
+          confirmButtonText: '确定归档',
+          cancelButtonText: '取消',
+          type: 'warning',
+          confirmButtonClass: 'el-button--warning'
+        }
+      )
+
+      await projectsStore.archiveProject(project.id)
+      ElMessage.success('项目归档成功')
+
+      // 重新加载列表
+      loadProjects()
+
+      // 如果归档的是当前查看的项目，返回列表
+      if (selectedProjectId.value === project.id) {
+        handleBackToList()
+      }
+
+    } catch (error) {
+      if (error !== 'cancel') {
+        console.error('归档项目失败:', error)
+        ElMessage.error('归档项目失败')
+      }
+    }
+  }
+
+  // 编辑器处理
+  const handleEditorSubmit = async (updatedProject) => {
+    try {
+      editorLoading.value = true
+
+      // 关闭编辑对话框
+      showEditorDialog.value = false
+      editingProject.value = null
+
+      // 重新加载列表和项目详情
+      loadProjects()
+      if (selectedProjectId.value) {
+        await loadProjectDetail(selectedProjectId.value)
+      }
+
+    } catch (error) {
+      console.error('编辑项目失败:', error)
+      ElMessage.error(error.message || '编辑项目失败')
+    } finally {
+      editorLoading.value = false
+    }
+  }
+
+  const handleEditorCancel = () => {
+    showEditorDialog.value = false
+    editingProject.value = null
+  }
+
+  const handleEditorClose = () => {
+    projectEditorRef.value?.resetForm()
+    editingProject.value = null
+  }
+
+  const handleEditorError = (error) => {
+    console.error('编辑器错误:', error)
+    ElMessage.error(error.message || '编辑器处理失败')
   }
 
   </script>

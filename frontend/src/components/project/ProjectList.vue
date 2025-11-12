@@ -83,11 +83,11 @@
         <el-table-column prop="status" label="状态" width="100">
           <template #default="{ row }">
             <el-tag
-              :type="getStatusType(row.status)"
+              :type="projectsStore.getStatusType(row.status)"
               size="small"
               effect="plain"
             >
-              {{ getStatusText(row.status) }}
+              {{ projectsStore.getStatusText(row.status) }}
             </el-tag>
           </template>
         </el-table-column>
@@ -95,47 +95,47 @@
 
         <el-table-column prop="word_count" label="字数" width="100" align="right">
           <template #default="{ row }">
-            <el-text>{{ formatNumber(row.word_count) }}</el-text>
+            <el-text>{{ projectsStore.formatNumber(row.word_count) }}</el-text>
           </template>
         </el-table-column>
 
         <el-table-column prop="paragraph_count" label="段落" width="100" align="right">
           <template #default="{ row }">
-            <el-text>{{ formatNumber(row.paragraph_count) }}</el-text>
+            <el-text>{{ projectsStore.formatNumber(row.paragraph_count) }}</el-text>
           </template>
         </el-table-column>
 
         <el-table-column prop="sentence_count" label="句子" width="100" align="right">
           <template #default="{ row }">
-            <el-text>{{ formatNumber(row.sentence_count) }}</el-text>
+            <el-text>{{ projectsStore.formatNumber(row.sentence_count) }}</el-text>
           </template>
         </el-table-column>
 
         <el-table-column prop="chapter_count" label="章节" width="100" align="right">
           <template #default="{ row }">
-            <el-text>{{ formatNumber(row.chapter_count) }}</el-text>
+            <el-text>{{ projectsStore.formatNumber(row.chapter_count) }}</el-text>
           </template>
         </el-table-column>
 
         <el-table-column prop="file_size" label="文件大小" width="120" align="right">
           <template #default="{ row }">
-            <el-text>{{ formatFileSize(row.file_size) }}</el-text>
+            <el-text>{{ projectsStore.formatFileSize(row.file_size) }}</el-text>
           </template>
         </el-table-column>
 
         <el-table-column prop="created_at" label="创建时间" width="160">
           <template #default="{ row }">
-            <el-text>{{ formatDateTime(row.created_at) }}</el-text>
+            <el-text>{{ projectsStore.formatDateTime(row.created_at) }}</el-text>
           </template>
         </el-table-column>
 
         <el-table-column prop="updated_at" label="更新时间" width="160">
           <template #default="{ row }">
-            <el-text>{{ formatDateTime(row.updated_at) }}</el-text>
+            <el-text>{{ projectsStore.formatDateTime(row.updated_at) }}</el-text>
           </template>
         </el-table-column>
 
-        <el-table-column label="操作" width="120" fixed="right">
+        <el-table-column label="操作" width="180" fixed="right">
           <template #default="{ row }">
             <div class="action-buttons">
               <el-button
@@ -146,6 +146,25 @@
                 @click.stop="$emit('view-project', row)"
               >
                 查看
+              </el-button>
+              <el-button
+                v-if="row.status !== 'archived'"
+                type="default"
+                size="small"
+                :icon="Edit"
+                link
+                @click.stop="$emit('edit-project', row)"
+              >
+                编辑
+              </el-button>
+              <el-button
+                v-if="row.status !== 'archived'"
+                type="warning"
+                size="small"
+                link
+                @click.stop="$emit('archive-project', row)"
+              >
+                归档
               </el-button>
             </div>
           </template>
@@ -178,8 +197,10 @@ import {
   Grid,
   List,
   View,
+  Edit,
 } from '@element-plus/icons-vue'
 import ProjectCard from './ProjectCard.vue'
+import { useProjectsStore } from '@/stores/projects'
 
 // Props定义
 const props = defineProps({
@@ -205,8 +226,13 @@ const props = defineProps({
   },
 })
 
+// Store实例
+const projectsStore = useProjectsStore()
+
 // Emits定义
 const emit = defineEmits([
+  'edit-project',
+  'archive-project',
   'view-project',
   'page-change',
   'size-change',
@@ -231,79 +257,7 @@ const handleRowClick = (row) => {
 }
 
 
-// 工具方法
-const getStatusType = (status) => {
-  const typeMap = {
-    uploaded: 'info',
-    parsing: 'warning',
-    parsed: 'success',
-    generating: 'warning',
-    completed: 'success',
-    failed: 'danger'
-  }
-  return typeMap[status] || 'info'
-}
-
-const getStatusText = (status) => {
-  const textMap = {
-    uploaded: '已上传',
-    parsing: '解析中',
-    parsed: '解析完成',
-    generating: '生成中',
-    completed: '已完成',
-    failed: '失败'
-  }
-  return textMap[status] || status
-}
-
-const getFileStatusType = (status) => {
-  const typeMap = {
-    pending: 'info',
-    uploading: 'warning',
-    uploaded: 'success',
-    processing: 'warning',
-    completed: 'success',
-    failed: 'danger',
-  }
-  return typeMap[status] || 'info'
-}
-
-const getFileStatusText = (status) => {
-  const textMap = {
-    pending: '等待',
-    uploading: '上传中',
-    uploaded: '已上传',
-    processing: '处理中',
-    completed: '已完成',
-    failed: '失败',
-  }
-  return textMap[status] || status
-}
-
-const formatNumber = (num) => {
-  if (!num) return '0'
-  return num.toLocaleString()
-}
-
-const formatFileSize = (bytes) => {
-  if (!bytes) return '-'
-  const k = 1024
-  const sizes = ['B', 'KB', 'MB', 'GB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
-}
-
-const formatDateTime = (dateTime) => {
-  if (!dateTime) return '-'
-  const date = new Date(dateTime)
-  return date.toLocaleString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
+// 使用store中的工具方法，避免重复代码
 
 // 暴露给父组件的方法
 defineExpose({

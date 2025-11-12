@@ -314,20 +314,33 @@ export const useProjectsStore = defineStore('projects', () => {
   /**
    * 归档项目
    * @param {string} projectId - 项目ID
-   * @param {boolean} isArchive - 是否归档
    */
-  const archiveProject = async (projectId, isArchive = true) => {
+  const archiveProject = async (projectId) => {
     try {
       loading.value = true
       error.value = null
 
-      // 归档功能待实现，暂时抛出友好提示
-      throw new Error('归档功能即将上线，敬请期待')
+      const archivedProject = await projectsService.archiveProject(projectId)
+
+      // 更新列表中的项目
+      const index = projects.value.findIndex(p => p.id === projectId)
+      if (index !== -1) {
+        projects.value[index] = archivedProject
+      }
+
+      // 更新当前项目
+      if (currentProject.value?.id === projectId) {
+        currentProject.value = archivedProject
+      }
+
+      return archivedProject
 
     } catch (err) {
       error.value = err.message || '归档项目失败'
-      ElMessage.info(error.value) // 显示为信息提示而非错误
-      // 不抛出错误，避免中断用户体验
+      ElMessage.error(error.value)
+      throw err
+    } finally {
+      loading.value = false
     }
   }
 
@@ -415,6 +428,7 @@ export const useProjectsStore = defineStore('projects', () => {
     calculateProgress: projectUtils.calculateProgress,
     isEditable: projectUtils.isEditable,
     isDeletable: projectUtils.isDeletable,
+    isArchivable: projectUtils.isArchivable,
     formatFileSize: projectUtils.formatFileSize,
     formatDateTime: projectUtils.formatDateTime,
     formatNumber: projectUtils.formatNumber

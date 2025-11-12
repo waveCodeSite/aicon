@@ -79,6 +79,15 @@ export const projectsService = {
    */
   async duplicateProject(projectId) {
     return await post(`/projects/${projectId}/duplicate`)
+  },
+
+  /**
+   * 归档项目
+   * @param {string} projectId - 项目ID
+   * @returns {Promise} 归档后的项目
+   */
+  async archiveProject(projectId) {
+    return await put(`/projects/${projectId}/archive`)
   }
 }
 
@@ -98,7 +107,8 @@ export const projectUtils = {
       'parsed': '解析完成',
       'generating': '生成中',
       'completed': '已完成',
-      'failed': '失败'
+      'failed': '失败',
+      'archived': '已归档'
     }
     return statusMap[status] || status
   },
@@ -115,7 +125,8 @@ export const projectUtils = {
       'parsed': 'success',
       'generating': 'warning',
       'completed': 'success',
-      'failed': 'danger'
+      'failed': 'danger',
+      'archived': 'info'
     }
     return typeMap[status] || 'info'
   },
@@ -187,7 +198,7 @@ export const projectUtils = {
    * @returns {boolean} 是否可编辑
    */
   isEditable(project) {
-    return !['parsing', 'generating'].includes(project.status)
+    return !['parsing', 'generating', 'archived'].includes(project.status)
   },
 
   /**
@@ -197,6 +208,15 @@ export const projectUtils = {
    */
   isDeletable(project) {
     return !['parsing', 'generating'].includes(project.status)
+  },
+
+  /**
+   * 检查项目是否可归档
+   * @param {Object} project - 项目对象
+   * @returns {boolean} 是否可归档
+   */
+  isArchivable(project) {
+    return !['parsing', 'generating', 'archived'].includes(project.status)
   },
 
   /**
