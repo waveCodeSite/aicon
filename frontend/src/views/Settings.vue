@@ -1,20 +1,9 @@
 <template>
   <div class="settings-page">
-    <div class="settings-header">
-      <div class="header-content">
-        <el-button
-          type="text"
-          @click="$router.push('/dashboard')"
-          class="back-button"
-          :icon="ArrowLeft"
-        >
-          返回仪表板
-        </el-button>
-        <div class="header-text">
-          <h1>系统设置</h1>
-          <p>管理您的账户和应用程序设置</p>
-        </div>
-      </div>
+    <!-- 页面标题 -->
+    <div class="page-header">
+      <h1>系统设置</h1>
+      <p>管理您的账户和应用程序设置</p>
     </div>
 
     <div class="settings-content">
@@ -401,7 +390,6 @@ import {
   Sunny,
   Moon,
   Camera,
-  ArrowLeft,
   Key,
   Check,
   Close
@@ -860,49 +848,26 @@ onMounted(async () => {
 
 <style scoped>
 .settings-page {
-  padding: var(--space-xl);
-  max-width: 1200px;
-  margin: 0 auto;
-  min-height: calc(100vh - 100px);
-}
-
-.settings-header {
-  margin-bottom: var(--space-2xl);
-}
-
-.header-content {
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: var(--space-xl);
 }
 
-.back-button {
-  padding: var(--space-md) var(--space-lg);
-  font-size: var(--text-base);
-  font-weight: 600;
-  color: var(--text-secondary);
-  transition: all var(--transition-base);
-  border-radius: var(--radius-lg);
+.page-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
 }
 
-.back-button:hover {
-  color: var(--primary-color);
-  background: rgba(99, 102, 241, 0.1);
-}
-
-.header-text {
-  flex: 1;
-}
-
-.settings-header h1 {
-  font-size: var(--text-3xl);
+.page-header h1 {
+  font-size: var(--text-2xl);
   font-weight: 700;
   color: var(--text-primary);
-  margin: 0 0 var(--space-sm) 0;
+  margin: 0;
 }
 
-.settings-header p {
-  font-size: var(--text-lg);
+.page-header p {
+  font-size: var(--text-base);
   color: var(--text-secondary);
   margin: 0;
 }
@@ -1680,26 +1645,12 @@ onMounted(async () => {
 
 /* 响应式设计 */
 @media (max-width: 768px) {
-  .settings-page {
-    padding: var(--space-md);
-  }
-
   .settings-content {
     border-radius: var(--radius-lg);
   }
 
   .settings-panel {
     padding: var(--space-lg);
-  }
-
-  .header-content {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: var(--space-md);
-  }
-
-  .back-button {
-    align-self: flex-start;
   }
 
   .avatar-section {
@@ -1721,27 +1672,9 @@ onMounted(async () => {
   .preferences-form {
     gap: var(--space-lg);
   }
-
-  .setting-section h2 {
-    font-size: var(--text-xl);
-    flex-direction: column;
-    gap: var(--space-sm);
-  }
 }
 
 @media (max-width: 480px) {
-  .settings-page {
-    padding: var(--space-sm);
-  }
-
-  .settings-header {
-    margin-bottom: var(--space-lg);
-  }
-
-  .settings-header h1 {
-    font-size: var(--text-2xl);
-  }
-
   .settings-panel {
     padding: var(--space-md);
   }

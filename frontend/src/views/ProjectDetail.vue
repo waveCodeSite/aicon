@@ -1,25 +1,20 @@
 <template>
   <div class="project-detail-page">
-    <!-- 统一导航头部 -->
-    <PageNavigation
-      :title="project?.title || '项目详情'"
-      description="查看和管理项目的详细信息"
-      :back-text="'返回项目列表'"
-      back-path="/projects"
-      :show-user-info="true"
-      :show-icon="true"
-      :title-icon="Document"
-      :breadcrumbs="breadcrumbs"
-    >
-      <template #extra>
-        <el-button @click="editProject" :icon="Edit">
-          编辑项目
-        </el-button>
-        <el-button type="primary" @click="downloadFile" :icon="Download">
-          下载文件
-        </el-button>
-      </template>
-    </PageNavigation>
+    <!-- 页面头部信息 -->
+    <div class="page-header">
+      <h1 class="page-title">{{ project?.title || '项目详情' }}</h1>
+      <p class="page-description">查看和管理项目的详细信息</p>
+    </div>
+
+    <!-- 操作按钮 -->
+    <template #actions>
+      <el-button @click="editProject" :icon="Edit">
+        编辑项目
+      </el-button>
+      <el-button type="primary" @click="downloadFile" :icon="Download">
+        下载文件
+      </el-button>
+    </template>
 
     <div v-if="project" class="project-content">
       <!-- 项目概览 -->
@@ -217,10 +212,9 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, computed } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
-  ArrowLeft,
   Document,
   Reading,
   ChatLineSquare,
@@ -229,33 +223,14 @@ import {
   Download,
   Share,
   View,
-  Edit,
-  House,
-  Document
+  Edit
 } from '@element-plus/icons-vue'
-import PageNavigation from '@/components/common/PageNavigation.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
 const route = useRoute()
 const router = useRouter()
 
 const project = ref(null)
-
-// 面包屑导航
-const breadcrumbs = computed(() => {
-  if (project.value) {
-    return [
-      { title: '首页', path: '/dashboard', icon: House },
-      { title: '项目管理', path: '/projects' },
-      { title: project.value.title }
-    ]
-  }
-  return [
-    { title: '首页', path: '/dashboard', icon: House },
-    { title: '项目管理', path: '/projects' },
-    { title: '项目详情' }
-  ]
-})
 const settingsForm = reactive({
   title: '',
   description: '',
@@ -403,14 +378,36 @@ onMounted(async () => {
 
 <style scoped>
 .project-detail-page {
-  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+.page-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.page-title {
+  font-size: var(--text-2xl);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+  line-height: 1.2;
+}
+
+.page-description {
+  font-size: var(--text-base);
+  color: var(--text-secondary);
+  margin: 0;
+  line-height: 1.5;
 }
 
 .project-content {
   display: flex;
   flex-direction: column;
-  gap: var(--space-xl);
-  padding: var(--space-xl);
+  gap: var(--space-lg);
 }
 
 .project-overview,
@@ -574,9 +571,6 @@ onMounted(async () => {
 }
 
 @media (max-width: 768px) {
-  .project-detail-page {
-    padding: var(--space-md);
-  }
 
   .project-info,
   .results-grid {

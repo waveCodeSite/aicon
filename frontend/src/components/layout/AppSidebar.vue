@@ -167,9 +167,10 @@ const isActive = (path) => {
 .sidebar-header {
   padding: var(--space-lg);
   border-bottom: 1px solid var(--border-primary);
-  min-height: 72px;
+  height: 72px;
   display: flex;
   align-items: center;
+  box-sizing: border-box;
 }
 
 .logo-container {

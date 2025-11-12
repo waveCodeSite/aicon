@@ -455,11 +455,7 @@
     ElMessage.error(error.message || '创建器处理失败')
   }
 
-  // 页面标题更新
-  watch(pageTitle, (newTitle) => {
-    document.title = newTitle
-  }, { immediate: true })
-</script>
+  </script>
 
 <style scoped>
 .projects-page {

@@ -52,8 +52,18 @@
           <!-- 右侧：操作区域 -->
           <div class="header-right">
             <!-- 页面特定的操作区域 -->
-            <div v-if="$slots.actions" class="header-actions">
-              <slot name="actions"></slot>
+            <div v-if="headerActions.length > 0" class="header-actions">
+              <el-button
+                v-for="action in headerActions"
+                :key="action.text"
+                :type="action.type || 'default'"
+                @click="action.action"
+              >
+                <el-icon v-if="action.icon">
+                  <component :is="action.icon" />
+                </el-icon>
+                {{ action.text }}
+              </el-button>
             </div>
 
             <!-- 用户信息 -->
@@ -104,7 +114,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, inject } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { ElMessage } from 'element-plus'
@@ -120,6 +130,9 @@ const sidebarCollapsed = ref(false)
 
 // 计算属性
 const user = computed(() => authStore.user)
+
+// 注入页面提供的header actions
+const headerActions = inject('headerActions', [])
 
 // 面包屑导航
 const breadcrumbs = computed(() => {
@@ -208,6 +221,7 @@ onMounted(() => {
   flex-direction: column;
   margin-left: 260px;
   transition: margin-left var(--transition-base);
+  height: 100vh;
 }
 
 .main-container.sidebar-collapsed {
@@ -221,6 +235,7 @@ onMounted(() => {
   position: sticky;
   top: 0;
   z-index: 100;
+  height: 72px;
 }
 
 .header-content {
@@ -228,7 +243,7 @@ onMounted(() => {
   justify-content: space-between;
   align-items: center;
   padding: var(--space-lg) var(--space-xl);
-  min-height: 72px;
+  height: 100%;
 }
 
 .header-left {
