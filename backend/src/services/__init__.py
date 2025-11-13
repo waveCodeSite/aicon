@@ -2,7 +2,7 @@
 业务服务模块
 """
 
-# from .text_parser import TextParserService
+from .text_parser import TextParserService, text_parser_service
 # from .chapter_service import ChapterService
 # from .sentence_service import SentenceService
 # from .video_generator import VideoGeneratorService
@@ -15,7 +15,8 @@ from .project import ProjectService
 # from .usage_service import UsageService
 
 __all__ = [
-    # "TextParserService",
+    "TextParserService",
+    "text_parser_service",
     # "ChapterService",
     # "SentenceService",
     # "VideoGeneratorService",

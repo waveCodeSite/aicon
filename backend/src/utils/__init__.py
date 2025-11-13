@@ -17,6 +17,16 @@ from .storage import (
     storage_client,
     get_storage_client,
 )
+from .text_utils import (
+    SentenceSplitter,
+    TextAnalyzer,
+    SentenceInfo,
+    TextAnalysis,
+    SentenceType,
+    PunctuationMark,
+    sentence_splitter,
+    text_analyzer,
+)
 
 __all__ = [
     # File handlers
@@ -32,4 +42,13 @@ __all__ = [
     "StorageError",
     "storage_client",
     "get_storage_client",
+    # Text utilities
+    "SentenceSplitter",
+    "TextAnalyzer",
+    "SentenceInfo",
+    "TextAnalysis",
+    "SentenceType",
+    "PunctuationMark",
+    "sentence_splitter",
+    "text_analyzer",
 ]

@@ -245,11 +245,11 @@ curl http://localhost:8000/docs
 - [X] T087 生成章节相关数据库迁移文件 in backend/migrations/versions/ ✅ 2025-11-13
 
 #### 后端服务与算法
-- [ ] T083 [P] 实现文本解析服务 in backend/src/services/text_parser.py
-- [ ] T084 [P] 实现章节识别算法 in backend/src/services/text_parser.py
-- [ ] T085 [P] 实现章节管理服务 in backend/src/services/chapter_service.py
-- [ ] T086 [P] 实现段落处理服务 in backend/src/services/paragraph_service.py
-- [ ] T087 [P] 实现句子分割算法 in backend/src/utils/text_utils.py
+- [X] T083 [P] 实现文本解析服务 in backend/src/services/text_parser.py ✅ 2025-11-13
+- [X] T084 [P] 实现章节识别算法 in backend/src/services/text_parser.py ✅ 2025-11-13
+- [ ] T085 [P] 实现章节管理服务 in backend/src/services/chapter.py
+- [ ] T086 [P] 实现段落处理服务 in backend/src/services/paragraph.py
+- [X] T087 [P] 实现句子分割算法 in backend/src/utils/text_utils.py ✅ 2025-11-13
 
 #### 后端API
 - [ ] T088 [P] 实现章节管理API in backend/src/api/v1/chapters.py
