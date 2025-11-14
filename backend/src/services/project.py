@@ -1,5 +1,16 @@
 """
 项目管理服务 - 简洁实现，严格按照data-model.md规范
+
+提供服务：
+- 项目的创建、查询、更新、删除
+- 项目状态管理
+- 项目统计信息
+- 处理进度跟踪
+
+设计原则：
+- 使用BaseService统一管理数据库会话
+- 异常处理遵循统一策略
+- 方法职责单一，保持简洁
 """
 
 from typing import Any, Dict, List, Optional, Tuple
@@ -7,22 +18,47 @@ from typing import Any, Dict, List, Optional, Tuple
 from sqlalchemy import desc, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.core.exceptions import BusinessLogicError, NotFoundError
 from src.core.logging import get_logger
 from src.models.project import Project, ProjectStatus
+from src.services.base import BaseService
 
 logger = get_logger(__name__)
 
 
-class ProjectServiceError(Exception):
-    """项目服务异常"""
-    pass
+class ProjectService(BaseService):
+    """
+    项目管理服务
 
+    负责项目的完整生命周期管理，包括创建、查询、更新、删除和状态管理。
+    所有数据库操作都通过基类提供的会话管理功能进行。
 
-class ProjectService:
-    """项目管理服务 - 简洁实现"""
+    使用方式：
+        # 在API中（通过依赖注入）：
+        @router.post("/projects")
+        async def create_project(project_data: ProjectCreate,
+                                db: AsyncSession = Depends(get_db),
+                                current_user: User = Depends(get_current_user)):
+            project_service = ProjectService(db)
+            return await project_service.create_project(...)
 
-    def __init__(self, db_session: AsyncSession):
-        self.db_session = db_session
+        # 在后台任务中（独立会话管理）：
+        async def process_project():
+            async with ProjectService() as service:
+                project = await service.get_project_by_id(...)
+                # 自动管理会话和事务
+    """
+
+    def __init__(self, db_session: Optional[AsyncSession] = None):
+        """
+        初始化项目管理服务
+
+        Args:
+            db_session: 可选的数据库会话。在FastAPI中通常通过依赖注入提供，
+                       在后台任务中可以不提供，让服务自己管理会话
+        """
+        super().__init__(db_session)
+        logger.debug(f"ProjectService 初始化完成，会话管理: {'外部注入' if db_session else '自管理'}")
 
     async def create_project(
             self,
@@ -38,22 +74,29 @@ class ProjectService:
         """
         创建新项目
 
+        创建一个新项目并初始化基本信息。如果提供文件相关信息，将一并设置。
+        操作会自动包含在事务中，失败时回滚。
+
         Args:
             owner_id: 所有者用户ID
-            title: 项目标题
-            description: 项目描述
-            file_name: 文件名称
+            title: 项目标题，必填，最大200字符
+            description: 项目描述，可选
+            file_name: 上传的文件名称
             file_size: 文件大小（字节）
-            file_type: 文件类型
+            file_type: 文件类型，默认为"txt"
             file_path: MinIO存储路径
-            file_hash: 文件MD5哈希
+            file_hash: 文件MD5哈希，用于去重检查
 
         Returns:
-            创建的项目
+            Project: 创建成功的项目对象，包含生成的ID和创建时间
+
+        Raises:
+            ValidationError: 当参数验证失败时
+            DatabaseError: 当数据库操作失败时
         """
         try:
-            project = await Project.create_project(
-                db_session=self.db_session,
+            # 创建项目对象（使用flush获取ID）
+            project = Project(
                 owner_id=owner_id,
                 title=title,
                 description=description,
@@ -61,47 +104,62 @@ class ProjectService:
                 file_size=file_size,
                 file_type=file_type,
                 file_path=file_path,
-                file_hash=file_hash
+                file_hash=file_hash,
+                status=ProjectStatus.UPLOADED
             )
 
-            await self.db_session.commit()
-            await self.db_session.refresh(project)
+            await self.add(project)
+            await self.flush()  # 获取数据库生成的ID
 
-            logger.info(f"创建项目成功: {project.id}, 所有者: {owner_id}")
+            # 提交事务
+            await self.commit()
+            await self.refresh(project)  # 确保获取最新数据
+
+            logger.info(f"创建项目成功: ID={project.id}, 标题={title}, 所有者={owner_id}")
             return project
 
-        except Exception as e:
-            await self.db_session.rollback()
-            logger.error(f"创建项目失败: {e}")
-            raise ProjectServiceError(f"创建项目失败: {str(e)}")
+        except Exception:
+            await self.rollback()
+            raise  # 重新抛出异常，由中间件处理
 
     async def get_project_by_id(
             self,
             project_id: str,
             owner_id: Optional[str] = None
-    ) -> Optional[Project]:
+    ) -> Project:
         """
         根据ID获取项目
 
+        查询指定ID的项目，可选择进行所有者权限验证。
+
         Args:
-            project_id: 项目ID
-            owner_id: 所有者ID（可选，用于权限检查）
+            project_id: 项目ID，必须是有效的UUID格式
+            owner_id: 所有者ID，可选。如果提供，将验证项目是否属于该用户
 
         Returns:
-            项目信息
+            Project: 查询到的项目对象
+
+        Raises:
+            NotFoundError: 当项目不存在或无权限访问时
+            ValidationError: 当project_id格式无效时
         """
-        try:
-            query = select(Project).filter(Project.id == project_id)
+        query = select(Project).filter(Project.id == project_id)
+        if owner_id:
+            query = query.filter(Project.owner_id == owner_id)
 
-            if owner_id:
-                query = query.filter(Project.owner_id == owner_id)
+        result = await self.execute(query)
+        project = result.scalar_one_or_none()
 
-            result = await self.db_session.execute(query)
-            return result.scalar_one_or_none()
+        if not project:
+            error_message = f"项目不存在或无权限访问" if owner_id else "项目不存在"
+            raise NotFoundError(
+                error_message,
+                resource_type="project",
+                resource_id=project_id
+            )
 
-        except Exception as e:
-            logger.error(f"获取项目失败: {e}")
-            return None
+        logger.debug(f"获取项目成功: ID={project_id}, 标题={project.title}")
+        return project
 
     async def get_owner_projects(
             self,
@@ -114,87 +172,96 @@ class ProjectService:
             sort_order: str = "desc"
     ) -> Tuple[List[Project], int]:
         """
-        获取用户的项目列表
+        获取用户的项目列表（分页）
+
+        支持多种过滤条件、搜索和排序方式，返回分页结果。
 
         Args:
-            owner_id: 所有者ID
-            status: 项目状态过滤
-            page: 页码
-            size: 每页大小
-            search: 搜索关键词
-            sort_by: 排序字段
-            sort_order: 排序顺序
+            owner_id: 所有者用户ID，必填
+            status: 项目状态过滤，可选。支持ProjectStatus枚举值
+            page: 页码，从1开始，默认1
+            size: 每页大小，默认20，最大100
+            search: 搜索关键词，支持在标题、描述、文件名中搜索
+            sort_by: 排序字段，默认created_at，支持title、updated_at、status等
+            sort_order: 排序顺序，默认desc，支持asc/desc
 
         Returns:
-            项目列表和总数
+            Tuple[List[Project], int]: (项目列表, 总记录数)
+
+        Raises:
+            ValidationError: 当分页参数无效时
+            DatabaseError: 当数据库查询失败时
         """
-        try:
-            # 构建查询
-            query = select(Project).filter(Project.owner_id == owner_id)
+        # 参数验证
+        if page < 1:
+            page = 1
+        if size < 1 or size > 100:
+            size = min(max(size, 1), 100)
 
-            # 状态过滤
-            if status:
-                query = query.filter(Project.status == status.value)
+        # 构建基础查询
+        query = select(Project).filter(Project.owner_id == owner_id)
 
-            # 搜索过滤
-            if search:
-                search_term = f"%{search}%"
-                query = query.filter(
-                    or_(
-                        Project.title.ilike(search_term),
-                        Project.description.ilike(search_term),
-                        Project.file_name.ilike(search_term)
-                    )
+        # 状态过滤
+        if status:
+            query = query.filter(Project.status == status.value)
+
+        # 搜索过滤 - 在标题、描述、文件名中搜索
+        if search:
+            search_term = f"%{search}%"
+            query = query.filter(
+                or_(
+                    Project.title.ilike(search_term),
+                    Project.description.ilike(search_term),
+                    Project.file_name.ilike(search_term)
                 )
+            )
 
-            # 获取总数
-            count_query = select(func.count(Project.id)).filter(Project.owner_id == owner_id)
-
-            if status:
-                count_query = count_query.filter(Project.status == status.value)
-
-            if search:
-                search_term = f"%{search}%"
-                count_query = count_query.filter(
-                    or_(
-                        Project.title.ilike(search_term),
-                        Project.description.ilike(search_term),
-                        Project.file_name.ilike(search_term)
-                    )
+        # 获取总数的查询（复用过滤条件）
+        count_query = select(func.count(Project.id)).filter(Project.owner_id == owner_id)
+        if status:
+            count_query = count_query.filter(Project.status == status.value)
+        if search:
+            search_term = f"%{search}%"
+            count_query = count_query.filter(
+                or_(
+                    Project.title.ilike(search_term),
+                    Project.description.ilike(search_term),
+                    Project.file_name.ilike(search_term)
                 )
+            )
 
-            total_result = await self.db_session.execute(count_query)
-            total = total_result.scalar()
+        # 执行总数查询
+        total_result = await self.execute(count_query)
+        total = total_result.scalar()
 
-            # 排序
-            if hasattr(Project, sort_by):
-                sort_column = getattr(Project, sort_by)
-                if sort_order.lower() == "desc":
-                    query = query.order_by(desc(sort_column))
-                else:
-                    query = query.order_by(sort_column)
+        # 排序处理
+        if hasattr(Project, sort_by):
+            sort_column = getattr(Project, sort_by)
+            if sort_order.lower() == "desc":
+                query = query.order_by(desc(sort_column))
             else:
-                query = query.order_by(desc(Project.created_at))
+                query = query.order_by(sort_column)
+        else:
+            # 默认按创建时间倒序
+            query = query.order_by(desc(Project.created_at))
 
-            # 分页
-            offset = (page - 1) * size
-            query = query.offset(offset).limit(size)
+        # 分页处理
+        offset = (page - 1) * size
+        query = query.offset(offset).limit(size)
 
-            result = await self.db_session.execute(query)
-            projects = result.scalars().all()
+        # 执行主查询
+        result = await self.execute(query)
+        projects = result.scalars().all()
 
-            return list(projects), total
-
-        except Exception as e:
-            logger.error(f"获取用户项目失败: {e}")
-            raise ProjectServiceError(f"获取用户项目失败: {str(e)}")
+        logger.debug(f"查询项目列表: 所有者={owner_id}, 总数={total}, 当前页={page}, 数量={len(projects)}")
+        return list(projects), total
 
     async def update_project(
             self,
             project_id: str,
             owner_id: str,
             **updates
-    ) -> Optional[Project]:
+    ) -> Project:
         """
         更新项目信息
 
@@ -206,34 +273,24 @@ class ProjectService:
         Returns:
             更新后的项目
         """
-        try:
-            project = await self.get_project_by_id(project_id, owner_id)
-            if not project:
-                raise ProjectServiceError(f"项目不存在或无权限: {project_id}")
+        project = await self.get_project_by_id(project_id, owner_id)
 
-            # 更新字段
-            for field, value in updates.items():
-                if hasattr(project, field):
-                    setattr(project, field, value)
+        # 更新字段
+        for field, value in updates.items():
+            if hasattr(project, field):
+                setattr(project, field, value)
 
-            await self.db_session.commit()
-            await self.db_session.refresh(project)
+        await self.commit()
+        await self.refresh(project)
 
-            logger.info(f"更新项目成功: {project_id}")
-            return project
-
-        except ProjectServiceError:
-            raise
-        except Exception as e:
-            await self.db_session.rollback()
-            logger.error(f"更新项目失败: {e}")
-            raise ProjectServiceError(f"更新项目失败: {str(e)}")
+        logger.info(f"更新项目成功: ID={project_id}, 更新字段={list(updates.keys())}")
+        return project
 
     async def archive_project(
             self,
             project_id: str,
             owner_id: str
-    ) -> Optional[Project]:
+    ) -> Project:
         """
         归档项目（不可逆操作）
 
@@ -244,29 +301,23 @@ class ProjectService:
         Returns:
             归档后的项目
         """
-        try:
-            project = await self.get_project_by_id(project_id, owner_id)
-            if not project:
-                raise ProjectServiceError(f"项目不存在或无权限: {project_id}")
+        project = await self.get_project_by_id(project_id, owner_id)
 
-            # 检查是否已归档
-            if project.is_archived():
-                raise ProjectServiceError(f"项目已经归档: {project_id}")
+        # 检查是否已归档
+        if project.is_archived():
+            raise BusinessLogicError(
+                message="项目已经归档",
+                business_rule="archive_validation",
+                context={"project_id": project_id, "current_status": project.status}
+            )
 
-            # 执行归档操作
-            project.archive_project()
-            await self.db_session.commit()
-            await self.db_session.refresh(project)
+        # 执行归档操作
+        project.archive_project()
+        await self.commit()
+        await self.refresh(project)
 
-            logger.info(f"归档项目成功: {project_id}")
-            return project
-
-        except ProjectServiceError:
-            raise
-        except Exception as e:
-            await self.db_session.rollback()
-            logger.error(f"归档项目失败: {e}")
-            raise ProjectServiceError(f"归档项目失败: {str(e)}")
+        logger.info(f"归档项目成功: ID={project_id}, 标题={project.title}")
+        return project
 
     async def delete_project(
             self,
@@ -283,23 +334,13 @@ class ProjectService:
         Returns:
             是否删除成功
         """
-        try:
-            project = await self.get_project_by_id(project_id, owner_id)
-            if not project:
-                raise ProjectServiceError(f"项目不存在或无权限: {project_id}")
+        project = await self.get_project_by_id(project_id, owner_id)
 
-            await self.db_session.delete(project)
-            await self.db_session.commit()
+        await self.delete(project)
+        await self.commit()
 
-            logger.info(f"删除项目成功: {project_id}")
-            return True
-
-        except ProjectServiceError:
-            raise
-        except Exception as e:
-            await self.db_session.rollback()
-            logger.error(f"删除项目失败: {e}")
-            raise ProjectServiceError(f"删除项目失败: {str(e)}")
+        logger.info(f"删除项目成功: ID={project_id}, 标题={project.title}")
+        return True
 
     async def get_project_statistics(self, owner_id: str) -> Dict[str, Any]:
         """
@@ -311,44 +352,39 @@ class ProjectService:
         Returns:
             统计信息
         """
-        try:
-            # 总项目数
-            total_query = select(func.count(Project.id)).filter(Project.owner_id == owner_id)
-            total_result = await self.db_session.execute(total_query)
-            total_projects = total_result.scalar()
+        # 总项目数
+        total_query = select(func.count(Project.id)).filter(Project.owner_id == owner_id)
+        total_result = await self.execute(total_query)
+        total_projects = total_result.scalar()
 
-            # 按状态分组统计
-            status_query = select(
-                Project.status,
-                func.count(Project.id)
-            ).filter(Project.owner_id == owner_id).group_by(Project.status)
+        # 按状态分组统计
+        status_query = select(
+            Project.status,
+            func.count(Project.id)
+        ).filter(Project.owner_id == owner_id).group_by(Project.status)
 
-            status_result = await self.db_session.execute(status_query)
-            status_stats = {row[0]: row[1] for row in status_result}
+        status_result = await self.execute(status_query)
+        status_stats = {row[0]: row[1] for row in status_result}
 
-            # 按文件类型统计
-            file_type_query = select(
-                Project.file_type,
-                func.count(Project.id)
-            ).filter(
-                Project.owner_id == owner_id,
-                Project.file_type.isnot(None)
-            ).group_by(Project.file_type)
+        # 按文件类型统计
+        file_type_query = select(
+            Project.file_type,
+            func.count(Project.id)
+        ).filter(
+            Project.owner_id == owner_id,
+            Project.file_type.isnot(None)
+        ).group_by(Project.file_type)
 
-            file_type_result = await self.db_session.execute(file_type_query)
-            file_type_stats = {row[0]: row[1] for row in file_type_result}
+        file_type_result = await self.execute(file_type_query)
+        file_type_stats = {row[0]: row[1] for row in file_type_result}
 
-            return {
-                "total_projects": total_projects or 0,
-                "status_distribution": status_stats,
-                "file_type_distribution": file_type_stats,
-            }
+        return {
+            "total_projects": total_projects or 0,
+            "status_distribution": status_stats,
+            "file_type_distribution": file_type_stats,
+        }
 
-        except Exception as e:
-            logger.error(f"获取项目统计失败: {e}")
-            return {}
-
-    async def update_processing_progress(self, project_id: str, owner_id: str, progress: int) -> Optional[Project]:
+    async def update_processing_progress(self, project_id: str, owner_id: str, progress: int) -> Project:
         """
         更新项目处理进度
 
@@ -360,28 +396,18 @@ class ProjectService:
         Returns:
             更新后的项目
         """
-        try:
-            project = await self.get_project_by_id(project_id, owner_id)
-            if not project:
-                raise ProjectServiceError(f"项目不存在或无权限: {project_id}")
+        project = await self.get_project_by_id(project_id, owner_id)
 
-            # 更新进度
-            project.update_processing_progress(progress)
+        # 更新进度
+        project.update_processing_progress(progress)
 
-            await self.db_session.commit()
-            await self.db_session.refresh(project)
+        await self.commit()
+        await self.refresh(project)
 
-            logger.info(f"更新项目进度: {project_id} -> {progress}%")
-            return project
+        logger.info(f"更新项目进度: ID={project_id}, 进度={progress}%")
+        return project
 
-        except ProjectServiceError:
-            raise
-        except Exception as e:
-            await self.db_session.rollback()
-            logger.error(f"更新项目进度失败: {e}")
-            raise ProjectServiceError(f"更新项目进度失败: {str(e)}")
-
-    async def mark_processing_failed(self, project_id: str, owner_id: str, error_message: str) -> Optional[Project]:
+    async def mark_processing_failed(self, project_id: str, owner_id: str, error_message: str) -> Project:
         """
         标记项目处理失败
 
@@ -393,28 +419,18 @@ class ProjectService:
         Returns:
             更新后的项目
         """
-        try:
-            project = await self.get_project_by_id(project_id, owner_id)
-            if not project:
-                raise ProjectServiceError(f"项目不存在或无权限: {project_id}")
+        project = await self.get_project_by_id(project_id, owner_id)
 
-            # 标记失败
-            project.mark_as_failed(error_message)
+        # 标记失败
+        project.mark_as_failed(error_message)
 
-            await self.db_session.commit()
-            await self.db_session.refresh(project)
+        await self.commit()
+        await self.refresh(project)
 
-            logger.info(f"标记项目处理失败: {project_id}")
-            return project
+        logger.info(f"标记项目处理失败: ID={project_id}, 错误={error_message[:50]}...")
+        return project
 
-        except ProjectServiceError:
-            raise
-        except Exception as e:
-            await self.db_session.rollback()
-            logger.error(f"标记项目处理失败: {e}")
-            raise ProjectServiceError(f"标记项目处理失败: {str(e)}")
-
-    async def mark_processing_completed(self, project_id: str, owner_id: str) -> Optional[Project]:
+    async def mark_processing_completed(self, project_id: str, owner_id: str) -> Project:
         """
         标记项目处理完成
 
@@ -425,29 +441,18 @@ class ProjectService:
         Returns:
             更新后的项目
         """
-        try:
-            project = await self.get_project_by_id(project_id, owner_id)
-            if not project:
-                raise ProjectServiceError(f"项目不存在或无权限: {project_id}")
+        project = await self.get_project_by_id(project_id, owner_id)
 
-            # 标记完成
-            project.mark_as_completed()
+        # 标记完成
+        project.mark_as_completed()
 
-            await self.db_session.commit()
-            await self.db_session.refresh(project)
+        await self.commit()
+        await self.refresh(project)
 
-            logger.info(f"标记项目处理完成: {project_id}")
-            return project
-
-        except ProjectServiceError:
-            raise
-        except Exception as e:
-            await self.db_session.rollback()
-            logger.error(f"标记项目处理完成失败: {e}")
-            raise ProjectServiceError(f"标记项目处理完成失败: {str(e)}")
+        logger.info(f"标记项目处理完成: ID={project_id}")
+        return project
 
 
 __all__ = [
     "ProjectService",
-    "ProjectServiceError",
 ]

@@ -1,5 +1,25 @@
 """
 文本解析服务 - 智能章节识别和内容解析
+
+提供服务：
+- 多模式章节检测和识别
+- 智能文本分段和分句
+- 文本内容清理和标准化
+- 结构化数据模型转换
+
+设计原则：
+- 支持多种章节标记格式
+- 智能分割长章节
+- 数据库安全的文本处理
+- 可配置的解析参数
+
+检测模式：
+- 中文数字章节：第一章、第二章...
+- 阿拉伯数字章节：1.、2.、Chapter 1...
+- 英文章节：Chapter 1、Part 1、Section 1...
+- 简单标记：1、2、3...
+- 括号章节：（一）、[第一卷]...
+
 严格按照data-model.md规范实现，专注于核心文本解析功能
 """
 
@@ -46,6 +66,7 @@ def clean_text_for_database(text: str) -> str:
     return text.strip()
 
 try:
+    from src.core.exceptions import ValidationError
     from src.core.logging import get_logger
     from src.models.chapter import Chapter, ChapterStatus
     from src.models.paragraph import Paragraph, ParagraphAction
@@ -55,6 +76,10 @@ except ImportError:
     def get_logger(name):
         import logging
         return logging.getLogger(name)
+
+    # 创建简单的ValidationError模拟
+    class ValidationError(ValueError):
+        pass
 
 
     # 创建简单的枚举模拟
@@ -143,18 +168,15 @@ class RegexChapterDetector(ChapterDetector):
         # 编译正则表达式
         self.compiled_patterns = []
         for pattern_info in self.patterns:
-            try:
-                compiled = re.compile(
-                    pattern_info['pattern'],
-                    re.MULTILINE | re.IGNORECASE
-                )
-                self.compiled_patterns.append({
-                    'compiled': compiled,
-                    'name': pattern_info['name'],
-                    'confidence': pattern_info['confidence']
-                })
-            except re.error as e:
-                logger.warning(f"正则表达式编译失败: {pattern_info['pattern']}, 错误: {e}")
+            compiled = re.compile(
+                pattern_info['pattern'],
+                re.MULTILINE | re.IGNORECASE
+            )
+            self.compiled_patterns.append({
+                'compiled': compiled,
+                'name': pattern_info['name'],
+                'confidence': pattern_info['confidence']
+            })
 
     def detect_chapters(self, text: str) -> List[ChapterDetection]:
         """使用正则表达式检测章节"""
@@ -261,63 +283,58 @@ class TextParserService:
         start_time = time.time()
 
         if not text or not text.strip():
-            raise ValueError("文本内容不能为空")
+            raise ValidationError("文本内容不能为空")
 
         options = options or {}
         min_chapter_length = options.get('min_chapter_length', 1000)
 
-        try:
-            logger.info(f"开始解析文档，文本长度: {len(text)} 字符")
+        logger.info(f"开始解析文档，文本长度: {len(text)} 字符")
 
-            # 0. 首先清理整个文本的编码
-            cleaned_text = clean_text_for_database(text)
-            if len(cleaned_text) != len(text):
-                logger.info(f"文本清理完成，长度从 {len(text)} 变为 {len(cleaned_text)}")
+        # 0. 首先清理整个文本的编码
+        cleaned_text = clean_text_for_database(text)
+        if len(cleaned_text) != len(text):
+            logger.info(f"文本清理完成，长度从 {len(text)} 变为 {len(cleaned_text)}")
 
-            # 1. 检测章节
-            chapters = self.detector.detect_chapters(cleaned_text)
+        # 1. 检测章节
+        chapters = self.detector.detect_chapters(cleaned_text)
 
-            # 2. 如果章节太长，尝试进一步分割
-            if len(chapters) == 1 and len(cleaned_text) > min_chapter_length * 2:
-                logger.info("单个章节过长，尝试智能分割")
-                chapters = self._split_long_chapter(cleaned_text)
+        # 2. 如果章节太长，尝试进一步分割
+        if len(chapters) == 1 and len(cleaned_text) > min_chapter_length * 2:
+            logger.info("单个章节过长，尝试智能分割")
+            chapters = self._split_long_chapter(cleaned_text)
 
-            # 3. 导入文本分割工具（直接导入，避免依赖问题）
-            from src.utils.text_utils import paragraph_splitter, sentence_splitter
+        # 3. 导入文本分割工具（直接导入，避免依赖问题）
+        from src.utils.text_utils import paragraph_splitter, sentence_splitter
 
-            # 4. 为每个章节分割段落和句子
-            all_paragraphs = []
-            all_sentences = []
+        # 4. 为每个章节分割段落和句子
+        all_paragraphs = []
+        all_sentences = []
 
-            for chapter in chapters:
-                # 分割段落
-                paragraphs = paragraph_splitter.split_into_paragraphs(chapter.content)
-                all_paragraphs.extend(paragraphs)
+        for chapter in chapters:
+            # 分割段落
+            paragraphs = paragraph_splitter.split_into_paragraphs(chapter.content)
+            all_paragraphs.extend(paragraphs)
 
-                # 分割句子
-                for paragraph in paragraphs:
-                    sentences = sentence_splitter.split_into_sentences(paragraph)
-                    all_sentences.extend(sentences)
+            # 分割句子
+            for paragraph in paragraphs:
+                sentences = sentence_splitter.split_into_sentences(paragraph)
+                all_sentences.extend(sentences)
 
-            processing_time = time.time() - start_time
+        processing_time = time.time() - start_time
 
-            # 5. 更新统计信息
-            self._update_stats(len(chapters))
+        # 5. 更新统计信息
+        self._update_stats(len(chapters))
 
-            result = ParsedContent(
-                chapters=chapters,
-                paragraphs=all_paragraphs,
-                sentences=all_sentences,
-                processing_time=processing_time
-            )
+        result = ParsedContent(
+            chapters=chapters,
+            paragraphs=all_paragraphs,
+            sentences=all_sentences,
+            processing_time=processing_time
+        )
 
-            logger.info(f"文档解析完成: {len(chapters)} 章节, {len(all_paragraphs)} 段落, {len(all_sentences)} 句子, 耗时: {processing_time:.2f}s")
+        logger.info(f"文档解析完成: {len(chapters)} 章节, {len(all_paragraphs)} 段落, {len(all_sentences)} 句子, 耗时: {processing_time:.2f}s")
 
-            return result
-
-        except Exception as e:
-            logger.error(f"文档解析失败: {str(e)}")
-            raise
+        return result
 
     def _split_long_chapter(self, text: str) -> List[ChapterDetection]:
         """分割过长的章节"""

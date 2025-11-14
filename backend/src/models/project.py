@@ -158,7 +158,8 @@ class Project(BaseModel):
             status=ProjectStatus.UPLOADED
         )
         db_session.add(project)
-        await db_session.commit()
+        # 注意：不在这里提交，让调用方控制事务
+        await db_session.flush()
         await db_session.refresh(project)
         return project
 

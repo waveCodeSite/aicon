@@ -302,58 +302,41 @@ async def upload_user_avatar(
     - **文件大小**: 最大5MB
     - **图片处理**: 自动调整尺寸为200x200，保持宽高比居中裁剪
     """
-    try:
-        # 验证文件类型
-        if not file.content_type or not file.content_type.startswith('image/'):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="只能上传图片文件"
-            )
-
-        # 读取文件数据
-        file_data = await file.read()
-
-        # 上传头像
-        avatar_url = await avatar_service.upload_avatar(
-            user_id=str(current_user.id),
-            file_data=file_data,
-            filename=file.filename
-        )
-
-        # 如果用户已有头像，删除旧头像
-        if current_user.avatar_url:
-            try:
-                await avatar_service.delete_avatar(current_user.avatar_url)
-            except Exception:
-                # 删除失败不影响新头像上传
-                pass
-
-        # 更新用户头像URL
-        current_user.avatar_url = avatar_url
-        await db.commit()
-        await db.refresh(current_user)
-
-        return {
-            "message": "头像上传成功",
-            "avatar_url": avatar_url,
-            "user": UserResponse.model_validate(current_user)
-        }
-
-    except ValidationError as e:
+    # 验证文件类型
+    if not file.content_type or not file.content_type.startswith('image/'):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
+            detail="只能上传图片文件"
         )
-    except FileUploadError as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
-        )
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"头像上传失败: {str(e)}"
-        )
+
+    # 读取文件数据
+    file_data = await file.read()
+
+    # 上传头像
+    avatar_url = await avatar_service.upload_avatar(
+        user_id=str(current_user.id),
+        file_data=file_data,
+        filename=file.filename
+    )
+
+    # 如果用户已有头像，删除旧头像
+    if current_user.avatar_url:
+        try:
+            await avatar_service.delete_avatar(current_user.avatar_url)
+        except Exception:
+            # 删除失败不影响新头像上传
+            pass
+
+    # 更新用户头像URL
+    current_user.avatar_url = avatar_url
+    await db.commit()
+    await db.refresh(current_user)
+
+    return {
+        "message": "头像上传成功",
+        "avatar_url": avatar_url,
+        "user": UserResponse.model_validate(current_user)
+    }
 
 
 @router.delete("/me/avatar", summary="删除用户头像")
@@ -368,36 +351,24 @@ async def delete_user_avatar(
     - **权限**: 用户只能删除自己的头像
     - **清理**: 同时删除MinIO中的文件
     """
-    try:
-        if not current_user.avatar_url:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="当前用户没有头像"
-            )
-
-        # 删除MinIO中的文件
-        success = await avatar_service.delete_avatar(current_user.avatar_url)
-
-        # 更新用户头像URL
-        current_user.avatar_url = None
-        await db.commit()
-        await db.refresh(current_user)
-
-        return {
-            "message": "头像删除成功",
-            "user": UserResponse.model_validate(current_user)
-        }
-
-    except FileUploadError as e:
+    if not current_user.avatar_url:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="当前用户没有头像"
         )
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"头像删除失败: {str(e)}"
-        )
+
+    # 删除MinIO中的文件
+    success = await avatar_service.delete_avatar(current_user.avatar_url)
+
+    # 更新用户头像URL
+    current_user.avatar_url = None
+    await db.commit()
+    await db.refresh(current_user)
+
+    return {
+        "message": "头像删除成功",
+        "user": UserResponse.model_validate(current_user)
+    }
 
 
 @router.get("/me/avatar/info", summary="获取用户头像信息")
@@ -411,33 +382,26 @@ async def get_avatar_info(
     - **权限**: 用户只能查看自己的头像信息
     - **返回**: 头像文件大小、上传时间等信息
     """
-    try:
-        if not current_user.avatar_url:
-            return {
-                "has_avatar": False,
-                "message": "当前用户没有头像"
-            }
+    if not current_user.avatar_url:
+        return {
+            "has_avatar": False,
+            "message": "当前用户没有头像"
+        }
 
-        avatar_info = await avatar_service.get_avatar_info(current_user.avatar_url)
+    avatar_info = await avatar_service.get_avatar_info(current_user.avatar_url)
 
-        if not avatar_info:
-            return {
-                "has_avatar": True,
-                "avatar_url": current_user.avatar_url,
-                "message": "头像文件不存在或无法访问"
-            }
-
+    if not avatar_info:
         return {
             "has_avatar": True,
             "avatar_url": current_user.avatar_url,
-            "avatar_info": avatar_info
+            "message": "头像文件不存在或无法访问"
         }
 
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"获取头像信息失败: {str(e)}"
-        )
+    return {
+        "has_avatar": True,
+        "avatar_url": current_user.avatar_url,
+        "avatar_info": avatar_info
+    }
 
 
 __all__ = ["router"]

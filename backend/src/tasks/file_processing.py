@@ -11,7 +11,7 @@ from typing import Any, Dict
 from celery import Celery
 
 from src.core.config import settings
-from src.core.database import get_async_db
+from src.core.database import get_async_db, AsyncSessionLocal, create_database_engine
 from src.core.logging import get_logger
 from src.models.project import Project
 from src.services.project_processing import project_processing_service
@@ -54,20 +54,20 @@ celery_app.conf.update(
 async def _process_uploaded_file_impl(project_id: str, owner_id: str) -> Dict[str, Any]:
     """核心逻辑: 处理上传文件"""
     try:
-        async with get_async_db() as db:
-            async with db.begin():
-                content = await _get_file_content(project_id)
-                result = await project_processing_service.process_uploaded_file(
-                    db_session=db,
-                    project_id=project_id,
-                    file_content=content
-                )
+        # 使用异步上下文管理器确保正确的会话管理
+        async with project_processing_service:
+            # ProjectProcessingService现在独立管理数据库会话
+            content = await _get_file_content(project_id)
+            result = await project_processing_service.process_uploaded_file(
+                project_id=project_id,
+                file_content=content
+            )
 
-                if not result.get("success", True):
-                    raise Exception(result.get("error", "文件处理失败"))
+            if not result.get("success", True):
+                raise Exception(result.get("error", "文件处理失败"))
 
-                logger.info(f"任务成功: process_uploaded_file (project_id={project_id})")
-                return result
+            logger.info(f"任务成功: process_uploaded_file (project_id={project_id})")
+            return result
 
     except Exception as e:
         await _mark_failed_safely(project_id, owner_id, f"文件处理失败: {e}")
@@ -76,13 +76,15 @@ async def _process_uploaded_file_impl(project_id: str, owner_id: str) -> Dict[st
 
 
 async def _get_processing_status_impl(project_id: str) -> Dict[str, Any]:
-    async with get_async_db() as db:
-        return await project_processing_service.get_processing_status(db, project_id)
+    # ProjectProcessingService现在独立管理数据库会话
+    async with project_processing_service:
+        return await project_processing_service.get_processing_status(project_id)
 
 
 async def _retry_failed_project_impl(project_id: str, owner_id: str) -> Dict[str, Any]:
     from src.services.project import ProjectService
 
+    # 对于ProjectService，我们仍然需要数据库会话，因为它需要事务管理
     async with get_async_db() as db:
         service = ProjectService(db)
         project = await service.get_project_by_id(project_id, owner_id)
@@ -98,9 +100,9 @@ async def _retry_failed_project_impl(project_id: str, owner_id: str) -> Dict[str
         project.processing_progress = 0
         await db.commit()
 
+        # ProjectProcessingService现在独立管理数据库会话
         content = await _get_file_content(project_id)
         return await project_processing_service.process_uploaded_file(
-            db_session=db,
             project_id=project_id,
             file_content=content
         )
@@ -198,6 +200,7 @@ async def _get_file_content(project_id: str):
 async def _mark_failed_safely(project_id: str, owner_id: str, message: str):
     from src.services.project import ProjectService
     try:
+        # 对于ProjectService，仍然需要外部数据库会话
         async with get_async_db() as db:
             service = ProjectService(db)
             await service.mark_processing_failed(project_id, owner_id, message)

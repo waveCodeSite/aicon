@@ -8,9 +8,9 @@ from unittest.mock import AsyncMock, Mock, patch
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from src.models.project import Project, ProjectStatus, FileProcessingStatus, SupportedFileType
+from src.models.project import Project, ProjectStatus
 from src.models.user import User
-from src.services.project import ProjectService, ProjectServiceError
+from src.services.project import ProjectService
 from src.utils.storage import MinIOStorage, StorageError
 
 
@@ -28,9 +28,9 @@ class TestProjectService:
         return AsyncMock(spec=MinIOStorage)
 
     @pytest.fixture
-    def project_service(self, mock_db_session, mock_storage_client):
+    def project_service(self, mock_db_session):
         """创建项目服务实例"""
-        return ProjectService(mock_db_session, mock_storage_client)
+        return ProjectService(mock_db_session)
 
     @pytest.fixture
     def mock_user(self):

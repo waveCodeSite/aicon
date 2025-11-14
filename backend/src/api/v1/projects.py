@@ -13,7 +13,7 @@ from src.core.database import get_db
 from src.core.logging import get_logger
 from src.models.project import ProjectStatus
 from src.models.user import User
-from src.services.project import ProjectService, ProjectServiceError
+from src.services.project import ProjectService
 
 logger = get_logger(__name__)
 
@@ -124,18 +124,10 @@ async def get_projects(
             total_pages=total_pages
         )
 
-    except ProjectServiceError as e:
-        logger.error(f"获取项目列表失败: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"获取项目列表失败: {str(e)}"
-        )
     except Exception as e:
-        logger.error(f"获取项目列表异常: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="获取项目列表失败"
-        )
+        logger.error(f"获取项目列表失败: {e}")
+        # 统一异常处理让中间件处理，这里只需要记录日志
+        raise
 
 
 @router.get("/{project_id}", response_model=ProjectResponse)
@@ -149,23 +141,12 @@ async def get_project(
     try:
         project_service = ProjectService(db)
         project = await project_service.get_project_by_id(project_id, current_user.id)
-
-        if not project:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="项目不存在"
-            )
-
         return ProjectResponse(**project.to_dict())
 
-    except HTTPException:
-        raise
     except Exception as e:
         logger.error(f"获取项目详情失败: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="获取项目详情失败"
-        )
+        # 统一异常处理让中间件处理
+        raise
 
 
 @router.post("/", response_model=ProjectResponse)
@@ -191,18 +172,10 @@ async def create_project(
 
         return ProjectResponse(**project.to_dict())
 
-    except ProjectServiceError as e:
-        logger.error(f"创建项目失败: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"创建项目失败: {str(e)}"
-        )
     except Exception as e:
-        logger.error(f"创建项目异常: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="创建项目失败"
-        )
+        logger.error(f"创建项目失败: {e}")
+        # 统一异常处理让中间件处理
+        raise
 
 
 @router.put("/{project_id}", response_model=ProjectResponse)
@@ -235,22 +208,12 @@ async def update_project(
             **updates
         )
 
-        if not project:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="项目不存在或无权限"
-            )
-
         return ProjectResponse(**project.to_dict())
 
-    except HTTPException:
-        raise
     except Exception as e:
         logger.error(f"更新项目失败: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="更新项目失败"
-        )
+        # 统一异常处理让中间件处理
+        raise
 
 
 @router.put("/{project_id}/archive", response_model=ProjectResponse)
@@ -269,22 +232,12 @@ async def archive_project(
             owner_id=current_user.id
         )
 
-        if not project:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="项目不存在或无权限"
-            )
-
         return ProjectResponse(**project.to_dict())
 
-    except HTTPException:
-        raise
     except Exception as e:
         logger.error(f"归档项目失败: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="归档项目失败"
-        )
+        # 统一异常处理让中间件处理
+        raise
 
 
 @router.delete("/{project_id}")
@@ -297,16 +250,10 @@ async def delete_project(
     """删除项目"""
     try:
         project_service = ProjectService(db)
-        success = await project_service.delete_project(
+        await project_service.delete_project(
             project_id=project_id,
             owner_id=current_user.id
         )
-
-        if not success:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="项目不存在或无权限"
-            )
 
         return {
             "success": True,
@@ -314,14 +261,10 @@ async def delete_project(
             "project_id": project_id
         }
 
-    except HTTPException:
-        raise
     except Exception as e:
         logger.error(f"删除项目失败: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="删除项目失败"
-        )
+        # 统一异常处理让中间件处理
+        raise
 
 
 __all__ = ["router"]
