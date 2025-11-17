@@ -8,7 +8,7 @@ import re
 from dataclasses import dataclass
 from typing import List
 
-from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter, TextSplitter
 
 try:
     from src.core.logging import get_logger
@@ -38,8 +38,7 @@ class ParagraphSplitter:
     def __init__(self):
         self.splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=0)
 
-    @staticmethod
-    def split_into_paragraphs(text: str) -> List[str]:
+    def split_into_paragraphs(self, text: str) -> List[str]:
         """
         将文本分割为段落 - 委托给FileHandler
         保持接口兼容性，避免重复实现
@@ -47,7 +46,132 @@ class ParagraphSplitter:
         if not text:
             return []
 
-        return [p.strip() for p in text.split('\n\n') if p.strip()]
+        return self.splitter.split_text(text)
+
+
+class LongSentenceSplitter(TextSplitter):
+    """
+    LangChain 兼容的长句切分器。
+
+    功能：
+        1. 按中英文标点符号进行基础分句
+        2. 自动合并短句，生成较长句子
+        3. 控制每句长度在 target_min_chars ~ target_max_chars 之间
+        4. 支持 strict_mode，严格保证每句最小长度
+
+    Attributes:
+        target_min_chars (int): 每句最小字符数
+        target_max_chars (int): 每句最大字符数
+        strict_mode (bool): 是否严格保证句子长度 >= target_min_chars
+    """
+
+    def __init__(
+            self,
+            target_min_chars: int = 100,
+            target_max_chars: int = 300,
+            strict_mode: bool = True,
+    ):
+        """
+        初始化 LongSentenceSplitter。
+
+        Args:
+            target_min_chars (int): 每句最小字符数，默认 80
+            target_max_chars (int): 每句最大字符数，默认 200
+            strict_mode (bool): 是否严格保证最小长度，默认 False
+        """
+        super().__init__()
+        self.target_min_chars = target_min_chars
+        self.target_max_chars = target_max_chars
+        self.strict_mode = strict_mode
+
+        # 定义中英文分句正则
+        self._split_pattern = re.compile(
+            r"(?<=[。！？!?])\s*|(?<=[\.\?\!])\s+"
+        )
+
+    def base_split(self, text: str) -> List[str]:
+        """
+        将文本按中英文标点进行基础分句。
+
+        Args:
+            text (str): 待切分文本
+
+        Returns:
+            List[str]: 基础句子列表，可能包含较短句子
+        """
+        parts = re.split(self._split_pattern, text)
+        return [p.strip() for p in parts if p.strip()]
+
+    def merge_sentences(self, sentences: List[str]) -> List[str]:
+        """
+        将基础句子合并成更长的句子，保证长度在 target_min_chars ~ target_max_chars 之间。
+
+        Args:
+            sentences (List[str]): 基础句子列表
+
+        Returns:
+            List[str]: 合并后的长句列表
+        """
+        merged = []
+        current = ""
+
+        for s in sentences:
+            new_len = len(current) + len(s)
+
+            if new_len < self.target_min_chars:
+                # 句子太短，继续合并
+                current += s
+                continue
+
+            if new_len > self.target_max_chars:
+                # 句子太长，先保存已有句子，重新开始新句
+                if current:
+                    merged.append(current)
+                current = s
+                continue
+
+            # 句子长度在合理范围内，直接加入
+            current += s
+            merged.append(current)
+            current = ""
+
+        # 循环结束后，若还有剩余句子，加入结果
+        if current:
+            merged.append(current)
+
+        if not self.strict_mode:
+            return merged
+
+        # strict_mode=True：保证所有句子长度 >= target_min_chars
+        final = []
+        temp = ""
+        for m in merged:
+            if len(m) < self.target_min_chars:
+                temp += m
+            else:
+                if temp:
+                    final.append(temp)
+                    temp = ""
+                final.append(m)
+        if temp:
+            final.append(temp)
+
+        print(final)
+        exit()
+        return final
+
+    def split_text(self, text: str) -> List[str]:
+        """
+        LangChain 主接口：将文本切分为长句列表。
+
+        Args:
+            text (str): 待切分文本
+
+        Returns:
+            List[str]: 切分后的长句列表，可直接用于 LangChain Document chunks
+        """
+        sentences = self.base_split(text)
+        return self.merge_sentences(sentences)
 
 
 class SentenceSplitter:
@@ -146,19 +270,11 @@ class SentenceSplitter:
 
         return processed
 
-    def _count_words(self, text: str) -> int:
-        """
-        计算词数 - 委托给FileHandler以避免重复实现
-        保持接口兼容性，统一字数统计逻辑
-        """
-        chinese_chars = len(re.findall(r'[\u4e00-\u9fff]', text))
-        english_words = len(re.findall(r'\b[a-zA-Z]+\b', text))
-        return chinese_chars + english_words
-
 
 # 全局实例
 paragraph_splitter = ParagraphSplitter()
 sentence_splitter = SentenceSplitter()
+long_sentence_splitter = LongSentenceSplitter()
 
 __all__ = [
     'ParagraphSplitter',

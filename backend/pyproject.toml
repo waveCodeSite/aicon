@@ -98,6 +98,9 @@ Documentation = "https://docs.aicg-platform.com"
 Repository = "https://github.com/your-org/aicg-platform.git"
 "Bug Tracker" = "https://github.com/your-org/aicg-platform/issues"
 
+[[tool.uv.index]]
+url = "https://pypi.tuna.tsinghua.edu.cn/simple"
+
 [project.scripts]
 aicg-server = "src.main:main"
 aicg-worker = "src.workers.base:start_worker"

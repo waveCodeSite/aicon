@@ -41,7 +41,7 @@ make setup
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # 同步依赖
-uv sync
+uv sync --index=https://pypi.tuna.tsinghua.edu.cn/simple
 
 # 运行数据库迁移
 uv run alembic upgrade head
