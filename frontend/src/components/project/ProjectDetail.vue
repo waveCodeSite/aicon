@@ -134,6 +134,12 @@
           编辑项目
         </el-button>
         <el-button
+          :icon="Document"
+          @click="handleManageChapters"
+        >
+          章节管理
+        </el-button>
+        <el-button
           v-if="['completed', 'parsed'].includes(project.status)"
           type="success"
           :icon="VideoPlay"
@@ -198,6 +204,7 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
   ArrowLeft,
@@ -205,7 +212,8 @@ import {
   Edit,
   Lock,
   Refresh,
-  RefreshRight
+  RefreshRight,
+  Document
 } from '@element-plus/icons-vue'
 import { useProjectsStore } from '@/stores/projects'
 
@@ -229,7 +237,8 @@ const props = defineProps({
   }
 })
 
-// Store实例
+// Router和Store实例
+const router = useRouter()
 const projectsStore = useProjectsStore()
 
 // Emits定义
@@ -253,6 +262,16 @@ const handleBack = () => {
   emit('back')
 }
 
+const handleManageChapters = () => {
+
+  const targetRoute = `/projects/${props.projectId}/chapters`
+  console.log('目标路由:', targetRoute)
+
+  // 直接进行路由跳转
+  router.push(targetRoute).then(() => {
+    console.log('路由跳转成功')
+  })
+}
 
 const handleStartGeneration = () => {
   if (!['completed', 'parsed'].includes(props.project.status)) {
@@ -596,6 +615,23 @@ watch(() => props.projectId, () => {
   border-color: var(--primary-color);
   background: rgba(99, 102, 241, 0.05);
   transform: translateY(-1px);
+}
+
+.action-buttons .el-button--info {
+  background: linear-gradient(135deg, var(--info-color), var(--info-hover));
+  border: none;
+  box-shadow: var(--shadow-md);
+  font-size: var(--text-base);
+  padding: var(--space-md) var(--space-xl);
+}
+
+.action-buttons .el-button--info:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+.mr-1 {
+  margin-right: var(--space-xs);
 }
 
 /* 错误状态样式 */

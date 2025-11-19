@@ -10,6 +10,8 @@ const Login = () => import('@/views/Login.vue')
 const Register = () => import('@/views/Register.vue')
 const Dashboard = () => import('@/views/Dashboard.vue')
 const Projects = () => import('@/views/Projects.vue')
+const ProjectDetail = () => import('@/views/ProjectDetail.vue')
+const ChapterManagement = () => import('@/views/chapters/ChapterManagement.vue')
 const GenerationQueue = () => import('@/views/GenerationQueue.vue')
 const GenerationSettings = () => import('@/views/GenerationSettings.vue')
 const Publish = () => import('@/views/Publish.vue')
@@ -78,6 +80,18 @@ const routes = [
         path: '',
         name: 'ProjectsPage',
         component: Projects
+      },
+      {
+        path: ':projectId',
+        name: 'ProjectDetail',
+        component: ProjectDetail,
+        props: true
+      },
+      {
+        path: ':projectId/chapters',
+        name: 'ChapterManagement',
+        component: ChapterManagement,
+        props: true
       }
     ]
   },

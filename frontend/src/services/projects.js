@@ -17,12 +17,13 @@ export const projectsService = {
     return await get('/projects/', { params })
   },
 
+
   /**
    * 根据ID获取项目详情
    * @param {string} projectId - 项目ID
    * @returns {Promise} 项目详情
    */
-  async getProjectById(projectId) {
+  async getProject(projectId) {
     return await get(`/projects/${projectId}`)
   },
 

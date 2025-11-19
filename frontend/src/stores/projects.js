@@ -121,7 +121,7 @@ export const useProjectsStore = defineStore('projects', () => {
       loading.value = true
       error.value = null
 
-      const project = await projectsService.getProjectById(projectId)
+      const project = await projectsService.getProject(projectId)
       currentProject.value = project
 
       // 更新列表中的项目数据
@@ -139,6 +139,14 @@ export const useProjectsStore = defineStore('projects', () => {
     } finally {
       loading.value = false
     }
+  }
+
+  /**
+   * 获取项目详情 (别名)
+   * @param {string} projectId - 项目ID
+   */
+  const getProject = async (projectId) => {
+    return await fetchProjectById(projectId)
   }
 
   /**
@@ -474,6 +482,7 @@ export const useProjectsStore = defineStore('projects', () => {
     // 方法
     fetchProjects,
     fetchProjectById,
+    getProject,
     fetchProjectContent,
     fetchProjectStatus,
     createProject,
