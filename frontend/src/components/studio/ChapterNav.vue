@@ -2,6 +2,14 @@
   <div class="chapter-nav">
     <div class="nav-header">
       <h3>章节列表</h3>
+      <el-button
+        type="primary"
+        size="small"
+        :icon="Plus"
+        @click="$emit('create')"
+      >
+        新建章节
+      </el-button>
       <el-input
         v-model="searchQuery"
         placeholder="搜索章节..."
@@ -9,6 +17,27 @@
         size="small"
         clearable
       />
+      <div class="filter-controls">
+        <el-select
+          v-model="statusFilter"
+          placeholder="状态筛选"
+          size="small"
+          clearable
+        >
+          <el-option label="全部" value="" />
+          <el-option label="已确认" value="confirmed" />
+          <el-option label="未确认" value="unconfirmed" />
+        </el-select>
+        <el-select
+          v-model="sortBy"
+          placeholder="排序方式"
+          size="small"
+        >
+          <el-option label="章节序号" value="chapter_number" />
+          <el-option label="创建时间" value="created_at" />
+          <el-option label="更新时间" value="updated_at" />
+        </el-select>
+      </div>
     </div>
 
     <div v-if="loading" class="nav-loading">
@@ -45,14 +74,42 @@
             已确认
           </el-tag>
         </div>
+        <div class="chapter-actions" @click.stop>
+          <el-dropdown trigger="click">
+            <el-icon class="action-icon"><MoreFilled /></el-icon>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item @click="$emit('edit', chapter)">
+                  <el-icon><Edit /></el-icon>
+                  编辑
+                </el-dropdown-item>
+                <el-dropdown-item @click="$emit('delete', chapter)" divided>
+                  <el-icon><Delete /></el-icon>
+                  删除
+                </el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
+        </div>
+      </div>
+      
+      <!-- 加载更多按钮 -->
+      <div v-if="hasMore && !loading" class="load-more">
+        <el-button
+          size="small"
+          @click="handleLoadMore"
+          :loading="loading"
+        >
+          加载更多章节
+        </el-button>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
-import { Search } from '@element-plus/icons-vue'
+import { ref, computed, nextTick, watch } from 'vue'
+import { Search, Plus, MoreFilled, Edit, Delete } from '@element-plus/icons-vue'
 
 const props = defineProps({
   chapters: {
@@ -66,22 +123,88 @@ const props = defineProps({
   loading: {
     type: Boolean,
     default: false
+  },
+  hasMore: {
+    type: Boolean,
+    default: false
   }
 })
 
-defineEmits(['select'])
+const emit = defineEmits(['select', 'create', 'edit', 'delete', 'load-more'])
 
 const searchQuery = ref('')
+const statusFilter = ref('')
+const sortBy = ref('chapter_number')
+
+// 获取滚动容器的引用
+const navListRef = ref(null)
 
 const filteredChapters = computed(() => {
-  if (!searchQuery.value) return props.chapters
+  let result = [...props.chapters]
   
-  const query = searchQuery.value.toLowerCase()
-  return props.chapters.filter(chapter =>
-    chapter.title?.toLowerCase().includes(query) ||
-    chapter.chapter_number?.toString().includes(query)
-  )
+  // 搜索过滤
+  if (searchQuery.value) {
+    const query = searchQuery.value.toLowerCase()
+    result = result.filter(chapter =>
+      chapter.title?.toLowerCase().includes(query) ||
+      chapter.chapter_number?.toString().includes(query)
+    )
+  }
+  
+  // 状态过滤
+  if (statusFilter.value === 'confirmed') {
+    result = result.filter(chapter => chapter.is_confirmed)
+  } else if (statusFilter.value === 'unconfirmed') {
+    result = result.filter(chapter => !chapter.is_confirmed)
+  }
+  
+  // 排序
+  result.sort((a, b) => {
+    if (sortBy.value === 'chapter_number') {
+      return (a.chapter_number || 0) - (b.chapter_number || 0)
+    } else if (sortBy.value === 'created_at') {
+      return new Date(b.created_at) - new Date(a.created_at)
+    } else if (sortBy.value === 'updated_at') {
+      return new Date(b.updated_at) - new Date(a.updated_at)
+    }
+    return 0
+  })
+  
+  return result
 })
+
+// 滚动位置保存
+let savedScrollPosition = null
+
+// 监听chapters变化，恢复滚动位置
+watch(() => props.chapters.length, (newLength, oldLength) => {
+  if (savedScrollPosition !== null && newLength > oldLength) {
+    // 章节数量增加了，说明加载了更多
+    nextTick(() => {
+      const scrollContainer = document.querySelector('.nav-list')
+      if (scrollContainer) {
+        scrollContainer.scrollTop = savedScrollPosition
+        savedScrollPosition = null
+      }
+    })
+  }
+})
+
+// 处理加载更多，保持滚动位置
+const handleLoadMore = () => {
+  // 获取滚动容器
+  const scrollContainer = document.querySelector('.nav-list')
+  if (!scrollContainer) {
+    emit('load-more')
+    return
+  }
+  
+  // 保存当前滚动位置（保存底部位置）
+  savedScrollPosition = scrollContainer.scrollTop
+  
+  // 触发加载
+  emit('load-more')
+}
 </script>
 
 <style scoped>
@@ -106,6 +229,21 @@ const filteredChapters = computed(() => {
   margin: 0 0 var(--space-sm) 0;
 }
 
+.nav-header .el-button {
+  width: 100%;
+  margin-bottom: var(--space-sm);
+}
+
+.filter-controls {
+  display: flex;
+  gap: var(--space-sm);
+  margin-top: var(--space-sm);
+}
+
+.filter-controls .el-select {
+  flex: 1;
+}
+
 .nav-loading,
 .nav-empty {
   padding: var(--space-lg);
@@ -115,6 +253,16 @@ const filteredChapters = computed(() => {
   flex: 1;
   overflow-y: auto;
   padding: var(--space-xs);
+}
+
+.load-more {
+  padding: var(--space-md);
+  text-align: center;
+  border-top: 1px solid var(--border-primary);
+}
+
+.load-more .el-button {
+  width: 100%;
 }
 
 .chapter-item {
@@ -127,11 +275,16 @@ const filteredChapters = computed(() => {
   cursor: pointer;
   transition: all var(--transition-fast);
   border: 1px solid transparent;
+  position: relative;
 }
 
 .chapter-item:hover {
   background: var(--bg-primary);
   border-color: var(--border-primary);
+}
+
+.chapter-item:hover .chapter-actions {
+  opacity: 1;
 }
 
 .chapter-item.is-selected {
@@ -188,6 +341,38 @@ const filteredChapters = computed(() => {
 
 .chapter-status {
   flex-shrink: 0;
+}
+
+.chapter-actions {
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+}
+
+.chapter-item.is-selected .chapter-actions {
+  opacity: 1;
+}
+
+.action-icon {
+  font-size: var(--text-lg);
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: var(--space-xs);
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-fast);
+}
+
+.action-icon:hover {
+  background: var(--bg-primary);
+  color: var(--primary-color);
+}
+
+.chapter-item.is-selected .action-icon {
+  color: white;
+}
+
+.chapter-item.is-selected .action-icon:hover {
+  background: rgba(255, 255, 255, 0.2);
 }
 
 /* 滚动条样式 */
