@@ -335,6 +335,14 @@ class ChapterService(BaseService):
         """
         chapter = await self.get_chapter_by_id(chapter_id, project_id)
 
+        # 检查是否已确认（已确认的章节不能修改）
+        if chapter.is_confirmed:
+            raise BusinessLogicError(
+                "已确认的章节不能修改",
+                business_rule="confirmed_chapter_update",
+                context={"chapter_id": chapter_id, "project_id": project_id}
+            )
+
         # 更新字段
         for field, value in updates.items():
             if hasattr(chapter, field) and value is not None:

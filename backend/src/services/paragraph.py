@@ -17,7 +17,7 @@ from typing import List, Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.core.exceptions import NotFoundError
+from src.core.exceptions import NotFoundError, BusinessLogicError
 from src.core.logging import get_logger
 from src.models.chapter import Chapter
 from src.models.paragraph import Paragraph, ParagraphAction
@@ -75,6 +75,22 @@ class ParagraphService(BaseService):
                     "章节不存在",
                     resource_type="chapter",
                     resource_id=chapter_id
+                )
+
+            # 检查章节是否已确认
+            if chapter.is_confirmed:
+                raise BusinessLogicError(
+                    "已确认的章节不能添加段落",
+                    business_rule="confirmed_chapter_add_paragraph",
+                    context={"chapter_id": chapter_id}
+                )
+
+            # 检查章节是否已确认
+            if chapter.is_confirmed:
+                raise BusinessLogicError(
+                    "已确认的章节不能添加段落",
+                    business_rule="confirmed_chapter_add_paragraph",
+                    context={"chapter_id": chapter_id}
                 )
 
             # 计算段落统计信息
@@ -223,6 +239,15 @@ class ParagraphService(BaseService):
         """
         paragraph = await self.get_paragraph_by_id(paragraph_id, chapter_id)
 
+        # 检查章节是否已确认
+        chapter = await self.get(Chapter, paragraph.chapter_id)
+        if chapter and chapter.is_confirmed:
+            raise BusinessLogicError(
+                "已确认的章节不能修改段落",
+                business_rule="confirmed_chapter_update_paragraph",
+                context={"chapter_id": paragraph.chapter_id, "paragraph_id": paragraph_id}
+            )
+
         # 检查内容是否变更
         content_changed = 'content' in updates and updates['content'] != paragraph.content
 
@@ -304,6 +329,15 @@ class ParagraphService(BaseService):
             是否删除成功
         """
         paragraph = await self.get_paragraph_by_id(paragraph_id, chapter_id)
+
+        # 检查章节是否已确认
+        chapter = await self.get(Chapter, paragraph.chapter_id)
+        if chapter and chapter.is_confirmed:
+            raise BusinessLogicError(
+                "已确认的章节不能删除段落",
+                business_rule="confirmed_chapter_delete_paragraph",
+                context={"chapter_id": paragraph.chapter_id, "paragraph_id": paragraph_id}
+            )
 
         # 统计要删除的句子数量
         sentence_count_result = await self.execute(

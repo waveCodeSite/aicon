@@ -26,9 +26,17 @@
           </el-button>
         </el-tooltip>
         <el-button 
+          v-if="canConfirm"
+          type="success" 
+          @click="handleConfirmCurrentChapter"
+        >
+          <el-icon><Check /></el-icon>
+          确认章节
+        </el-button>
+        <el-button 
           type="primary" 
           :loading="saving"
-          :disabled="!hasChanges"
+          :disabled="!hasChanges || readOnly"
           @click="handleSave"
         >
           <el-icon><Check /></el-icon>
@@ -76,6 +84,7 @@
             @create="handleChapterCreate"
             @edit="handleChapterEdit"
             @delete="handleChapterDelete"
+            @confirm="handleChapterConfirm"
             @load-more="loadMoreChapters"
           />
         </div>
@@ -109,6 +118,7 @@
         @update="handleParagraphUpdate"
         @create="handleParagraphCreate"
         @physical-delete="handleParagraphPhysicalDelete"
+        :read-only="readOnly"
       />
 
       <!-- 右侧折叠条 -->
@@ -141,6 +151,7 @@
             :loading="sentencesLoading"
             :is-maximized="inspectorMaximized"
             @toggle-maximize="inspectorMaximized = !inspectorMaximized"
+            :read-only="readOnly"
           />
         </div>
       </Transition>
@@ -191,6 +202,20 @@ const selectedParagraphId = ref(null)
 const selectedParagraph = computed(() => 
   paragraphs.value.find(p => p.id === selectedParagraphId.value)
 )
+
+// 只读状态
+const readOnly = computed(() => {
+  if (!selectedChapterId.value) return true
+  const chapter = chapters.value.find(c => c.id === selectedChapterId.value)
+  return chapter ? chapter.is_confirmed : true
+})
+
+// 是否可以确认
+const canConfirm = computed(() => {
+  if (!selectedChapterId.value) return false
+  const chapter = chapters.value.find(c => c.id === selectedChapterId.value)
+  return chapter && !chapter.is_confirmed && chapter.status === 'pending'
+})
 
 // 章节对话框状态
 const showChapterDialog = ref(false)
@@ -508,6 +533,43 @@ const handleChapterSubmit = async (chapterData) => {
   } catch (error) {
     console.error('保存章节失败:', error)
     ElMessage.error('保存章节失败')
+  }
+}
+
+const handleChapterConfirm = async (chapter) => {
+  try {
+    await ElMessageBox.confirm(
+      `确定要确认章节"${chapter.title}"吗？确认后章节将变为只读，无法再修改。`,
+      '确认章节',
+      {
+        confirmButtonText: '确认',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+
+    await chaptersService.confirmChapter(chapter.id)
+    ElMessage.success('章节确认成功')
+    
+    // 重新加载章节列表 (reset=true 以避免重复添加)
+    await loadChapters(true)
+    
+    // 如果确认的是当前章节，需要重新加载段落以更新状态（虽然前端已经计算了readOnly，但最好刷新一下）
+    if (selectedChapterId.value === chapter.id) {
+      await loadParagraphs(chapter.id)
+    }
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('确认章节失败:', error)
+      ElMessage.error('确认章节失败')
+    }
+  }
+}
+
+const handleConfirmCurrentChapter = () => {
+  const chapter = chapters.value.find(c => c.id === selectedChapterId.value)
+  if (chapter) {
+    handleChapterConfirm(chapter)
   }
 }
 

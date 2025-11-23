@@ -45,7 +45,13 @@
       <div class="info-section">
         <div class="section-header">
           <h4>句子管理</h4>
-          <el-button type="primary" link size="small" @click="handleAddSentence">
+          <el-button 
+            v-if="!readOnly"
+            type="primary" 
+            link 
+            size="small" 
+            @click="handleAddSentence"
+          >
             <el-icon><Plus /></el-icon> 添加
           </el-button>
         </div>
@@ -77,7 +83,7 @@
               </div>
               <div v-else class="view-mode">
                 <p>{{ sentence.content }}</p>
-                <div class="item-actions">
+                <div class="item-actions" v-if="!readOnly">
                   <el-button type="primary" link size="small" @click="startEdit(sentence)">
                     <el-icon><Edit /></el-icon>
                   </el-button>
@@ -137,6 +143,10 @@ const props = defineProps({
     default: false
   },
   isMaximized: {
+    type: Boolean,
+    default: false
+  },
+  readOnly: {
     type: Boolean,
     default: false
   }

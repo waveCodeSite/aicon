@@ -9,9 +9,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.exceptions import NotFoundError
 from src.core.logging import get_logger
+from src.models.chapter import Chapter
 from src.models.paragraph import Paragraph
 from src.models.sentence import Sentence, SentenceStatus
 from src.services.base import BaseService
+from src.core.exceptions import NotFoundError, BusinessLogicError
 
 logger = get_logger(__name__)
 
@@ -40,6 +42,15 @@ class SentenceService(BaseService):
                 "段落不存在",
                 resource_type="paragraph",
                 resource_id=paragraph_id
+            )
+
+        # 检查章节是否已确认
+        chapter = await self.get(Chapter, paragraph.chapter_id)
+        if chapter and chapter.is_confirmed:
+            raise BusinessLogicError(
+                "已确认的章节不能添加句子",
+                business_rule="confirmed_chapter_add_sentence",
+                context={"chapter_id": paragraph.chapter_id, "paragraph_id": paragraph_id}
             )
 
         # 如果未指定顺序，则添加到最后
@@ -91,6 +102,16 @@ class SentenceService(BaseService):
         """
         sentence = await self.get_sentence_by_id(sentence_id)
 
+        # 检查章节是否已确认
+        paragraph = await self.get(Paragraph, sentence.paragraph_id)
+        chapter = await self.get(Chapter, paragraph.chapter_id)
+        if chapter and chapter.is_confirmed:
+            raise BusinessLogicError(
+                "已确认的章节不能修改句子",
+                business_rule="confirmed_chapter_update_sentence",
+                context={"chapter_id": paragraph.chapter_id, "sentence_id": sentence_id}
+            )
+
         if content is not None and content != sentence.content:
             sentence.content = content
             sentence.word_count = len(content.replace(' ', ''))
@@ -124,6 +145,16 @@ class SentenceService(BaseService):
         删除句子
         """
         sentence = await self.get_sentence_by_id(sentence_id)
+
+        # 检查章节是否已确认
+        paragraph = await self.get(Paragraph, sentence.paragraph_id)
+        chapter = await self.get(Chapter, paragraph.chapter_id)
+        if chapter and chapter.is_confirmed:
+            raise BusinessLogicError(
+                "已确认的章节不能删除句子",
+                business_rule="confirmed_chapter_delete_sentence",
+                context={"chapter_id": paragraph.chapter_id, "sentence_id": sentence_id}
+            )
         
         await self.delete(sentence)
         await self.commit()

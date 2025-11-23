@@ -3,7 +3,11 @@
     <div class="stream-header">
       <h3>段落编辑</h3>
       <div class="stream-actions">
-        <el-button size="small" @click="handleCreateParagraph">
+        <el-button 
+          v-if="!readOnly"
+          size="small" 
+          @click="handleCreateParagraph"
+        >
           <el-icon><Plus /></el-icon>
           新建段落
         </el-button>
@@ -16,7 +20,11 @@
 
     <div v-else-if="paragraphs.length === 0" class="stream-empty">
       <el-empty description="暂无段落">
-        <el-button type="primary" @click="handleCreateParagraph">
+        <el-button 
+          v-if="!readOnly"
+          type="primary" 
+          @click="handleCreateParagraph"
+        >
           <el-icon><Plus /></el-icon>
           创建第一个段落
         </el-button>
@@ -42,10 +50,11 @@
             @update:model-value="(val) => handleActionChange(paragraph.id, val)"
             @click.stop
             size="small"
+            :disabled="readOnly"
           >
-            <el-radio-button label="keep">保留</el-radio-button>
-            <el-radio-button label="edit">编辑</el-radio-button>
-            <el-radio-button label="delete">删除</el-radio-button>
+            <el-radio-button value="keep">保留</el-radio-button>
+            <el-radio-button value="edit">编辑</el-radio-button>
+            <el-radio-button value="delete">删除</el-radio-button>
           </el-radio-group>
         </div>
 
@@ -110,6 +119,10 @@ const props = defineProps({
     default: null
   },
   loading: {
+    type: Boolean,
+    default: false
+  },
+  readOnly: {
     type: Boolean,
     default: false
   }

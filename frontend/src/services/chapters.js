@@ -58,6 +58,15 @@ export const chaptersService = {
    */
   async deleteChapter(chapterId) {
     return await api.delete(`/chapters/${chapterId}`)
+  },
+
+  /**
+   * 确认章节
+   * @param {string} chapterId 章节ID
+   * @returns {Promise<Object>}
+   */
+  async confirmChapter(chapterId) {
+    return await api.put(`/chapters/${chapterId}/confirm`)
   }
 }
 

@@ -79,10 +79,17 @@
             <el-icon class="action-icon"><MoreFilled /></el-icon>
             <template #dropdown>
               <el-dropdown-menu>
-                <el-dropdown-item @click="$emit('edit', chapter)">
-                  <el-icon><Edit /></el-icon>
-                  编辑
-                </el-dropdown-item>
+                  <el-dropdown-item @click="$emit('edit', chapter)">
+                    <el-icon><Edit /></el-icon>
+                    编辑
+                  </el-dropdown-item>
+                  <el-dropdown-item 
+                    v-if="!chapter.is_confirmed && chapter.status === 'pending'"
+                    @click="$emit('confirm', chapter)"
+                  >
+                    <el-icon><Check /></el-icon>
+                    确认章节
+                  </el-dropdown-item>
                 <el-dropdown-item @click="$emit('delete', chapter)" divided>
                   <el-icon><Delete /></el-icon>
                   删除
@@ -109,7 +116,7 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import { Search, Plus, MoreFilled, Edit, Delete } from '@element-plus/icons-vue'
+import { Search, Plus, MoreFilled, Edit, Delete, Check } from '@element-plus/icons-vue'
 
 const props = defineProps({
   chapters: {
@@ -130,7 +137,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['select', 'create', 'edit', 'delete', 'load-more'])
+const emit = defineEmits(['select', 'create', 'edit', 'delete', 'confirm', 'load-more'])
 
 const searchQuery = ref('')
 const statusFilter = ref('')
