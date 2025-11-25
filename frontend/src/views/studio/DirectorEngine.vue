@@ -5,7 +5,7 @@
         <el-form-item label="选择章节">
           <el-select v-model="selectedChapterId" placeholder="请选择已确认的章节" @change="loadSentences">
             <el-option
-              v-for="chapter in confirmedChapters"
+              v-for="chapter in chapters"
               :key="chapter.id"
               :label="`第${chapter.chapter_number}章: ${chapter.title}`"
               :value="chapter.id"
@@ -92,17 +92,12 @@ const selectedStyle = ref('cinematic')
 const loading = ref(false)
 const generating = ref(false)
 
-// 只显示已确认的章节
-const confirmedChapters = computed(() => {
-  return chapters.value.filter(chapter => chapter.is_confirmed)
-})
-
-// 加载章节
+// 加载已确认的章节
 const loadChapters = async () => {
   try {
-    const res = await chaptersService.getChapters(props.projectId)
+    const res = await chaptersService.getConfirmedChapters(props.projectId)
     chapters.value = res.chapters || []
-    
+
     // 如果URL中有chapterId参数，自动选中该章节
     const chapterIdFromQuery = route.query.chapterId
     if (chapterIdFromQuery) {

@@ -229,6 +229,7 @@ class ChapterService(BaseService):
             page: int = 1,
             size: int = 20,
             status: Optional[ModelChapterStatus] = None,
+            is_confirmed: Optional[bool] = None,
             search: Optional[str] = None,
             sort_by: str = "chapter_number",
             sort_order: str = "asc"
@@ -243,6 +244,7 @@ class ChapterService(BaseService):
             page: 页码，从1开始，默认1
             size: 每页大小，默认20，最大100
             status: 章节状态过滤，可选
+            is_confirmed: 是否已确认过滤，可选 True/False
             search: 搜索关键词，支持在标题、内容中搜索
             sort_by: 排序字段，默认chapter_number，支持title、created_at、updated_at等
             sort_order: 排序顺序，默认asc，支持asc/desc
@@ -267,6 +269,10 @@ class ChapterService(BaseService):
         if status:
             query = query.filter(Chapter.status == status.value)
 
+        # 确认状态过滤
+        if is_confirmed is not None:
+            query = query.filter(Chapter.is_confirmed == is_confirmed)
+
         # 搜索过滤 - 在标题、内容中搜索
         if search:
             search_term = f"%{search}%"
@@ -281,6 +287,8 @@ class ChapterService(BaseService):
         count_query = select(func.count(Chapter.id)).filter(Chapter.project_id == project_id)
         if status:
             count_query = count_query.filter(Chapter.status == status.value)
+        if is_confirmed is not None:
+            count_query = count_query.filter(Chapter.is_confirmed == is_confirmed)
         if search:
             search_term = f"%{search}%"
             count_query = count_query.filter(

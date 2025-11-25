@@ -32,6 +32,7 @@ async def get_chapters(
         page: int = Query(1, ge=1, description="页码"),
         size: int = Query(20, ge=1, le=100, description="每页大小"),
         chapter_status: Optional[str] = Query("", description="状态过滤"),
+        is_confirmed: Optional[bool] = Query(None, description="是否已确认过滤"),
         search: Optional[str] = Query("", description="搜索关键词"),
         sort_by: str = Query("chapter_number", description="排序字段"),
         sort_order: str = Query("asc", regex="^(asc|desc)$", description="排序顺序")
@@ -58,6 +59,7 @@ async def get_chapters(
     chapters, total = await chapter_service.get_project_chapters(
         project_id=project_id,
         status=status_filter,
+        is_confirmed=is_confirmed,
         page=page,
         size=size,
         search=search_query,
@@ -189,6 +191,7 @@ async def confirm_chapter(
     )
 
     return ChapterConfirmResponse(
+        success=True,
         message="章节确认成功",
         chapter=ChapterResponse.from_dict(confirmed_chapter.to_dict())
     )

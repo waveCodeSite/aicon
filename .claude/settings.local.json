@@ -5,7 +5,9 @@
       "Bash(python:*)",
       "Bash(uv run python:*)",
       "Bash(uv run grep:*)",
-      "Bash(npm run lint)"
+      "Bash(npm run lint)",
+      "Bash(npm run lint:*)",
+      "Bash(node:*)"
     ],
     "deny": [],
     "ask": []

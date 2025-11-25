@@ -20,6 +20,22 @@ export const chaptersService = {
   },
 
   /**
+   * 获取已确认的章节列表
+   * @param {string} projectId 项目ID
+   * @param {Object} params 查询参数
+   * @returns {Promise<Object>}
+   */
+  async getConfirmedChapters(projectId, params = {}) {
+    return await api.get('/chapters/', {
+      params: {
+        project_id: projectId,
+        is_confirmed: true,
+        ...params
+      }
+    })
+  },
+
+  /**
    * 获取单个章节详情
    * @param {string} chapterId 章节ID
    * @returns {Promise<Object>}
