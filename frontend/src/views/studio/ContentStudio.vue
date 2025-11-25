@@ -34,6 +34,14 @@
           确认章节
         </el-button>
         <el-button 
+          v-if="readOnly && selectedChapterId"
+          type="warning" 
+          @click="goToDirector"
+        >
+          <el-icon><MagicStick /></el-icon>
+          导演引擎
+        </el-button>
+        <el-button 
           type="primary" 
           :loading="saving"
           :disabled="!hasChanges || readOnly"
@@ -106,6 +114,7 @@
             @delete="handleChapterDelete"
             @confirm="handleChapterConfirm"
             @load-more="loadMoreChapters"
+            @director-engine="handleGoToDirector"
           />
         </div>
       </Transition>
@@ -597,11 +606,21 @@ const handleConfirmCurrentChapter = () => {
   }
 }
 
+// 从章节列表进入导演引擎
+const handleGoToDirector = (chapter) => {
+  router.push({
+    name: 'DirectorEngine',
+    params: { projectId: props.projectId },
+    query: { chapterId: chapter.id }
+  })
+}
+
 // 进入导演引擎
 const goToDirector = () => {
   router.push({
     name: 'DirectorEngine',
-    params: { projectId: props.projectId }
+    params: { projectId: props.projectId },
+    query: { chapterId: selectedChapterId.value }
   })
 }
 

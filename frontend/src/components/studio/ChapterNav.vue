@@ -90,6 +90,13 @@
                     <el-icon><Check /></el-icon>
                     确认章节
                   </el-dropdown-item>
+                  <el-dropdown-item 
+                    v-if="chapter.is_confirmed"
+                    @click="$emit('director-engine', chapter)"
+                  >
+                    <el-icon><MagicStick /></el-icon>
+                    进入导演引擎
+                  </el-dropdown-item>
                 <el-dropdown-item @click="$emit('delete', chapter)" divided>
                   <el-icon><Delete /></el-icon>
                   删除
@@ -116,7 +123,7 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import { Search, Plus, MoreFilled, Edit, Delete, Check } from '@element-plus/icons-vue'
+import { Search, Plus, MoreFilled, Edit, Delete, Check, MagicStick } from '@element-plus/icons-vue'
 
 const props = defineProps({
   chapters: {
@@ -137,7 +144,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['select', 'create', 'edit', 'delete', 'confirm', 'load-more'])
+const emit = defineEmits(['select', 'create', 'edit', 'delete', 'confirm', 'load-more', 'director-engine'])
 
 const searchQuery = ref('')
 const statusFilter = ref('')

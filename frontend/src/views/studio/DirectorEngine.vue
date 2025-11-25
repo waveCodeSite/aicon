@@ -3,11 +3,11 @@
     <div class="toolbar">
       <el-form :inline="true" class="filter-form">
         <el-form-item label="选择章节">
-          <el-select v-model="selectedChapterId" placeholder="请选择章节" @change="loadSentences">
+          <el-select v-model="selectedChapterId" placeholder="请选择已确认的章节" @change="loadSentences">
             <el-option
-              v-for="chapter in chapters"
+              v-for="chapter in confirmedChapters"
               :key="chapter.id"
-              :label="chapter.title"
+              :label="`第${chapter.chapter_number}章: ${chapter.title}`"
               :value="chapter.id"
             />
           </el-select>
@@ -68,11 +68,14 @@
 
 <script setup>
 import { ref, onMounted, computed } from 'vue'
+import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import chaptersService from '@/services/chapters'
 import paragraphsService from '@/services/paragraphs'
 import sentencesService from '@/services/sentences'
 import axios from 'axios'
+
+const route = useRoute()
 
 // Props
 const props = defineProps({
@@ -91,11 +94,24 @@ const selectedStyle = ref('cinematic')
 const loading = ref(false)
 const generating = ref(false)
 
+// 只显示已确认的章节
+const confirmedChapters = computed(() => {
+  return chapters.value.filter(chapter => chapter.is_confirmed)
+})
+
 // 加载章节
 const loadChapters = async () => {
   try {
     const res = await chaptersService.getChapters(props.projectId)
     chapters.value = res.chapters || []
+    
+    // 如果URL中有chapterId参数，自动选中该章节
+    const chapterIdFromQuery = route.query.chapterId
+    if (chapterIdFromQuery) {
+      selectedChapterId.value = chapterIdFromQuery
+      // 自动加载该章节的句子
+      await loadSentences()
+    }
   } catch (error) {
     console.error('加载章节失败', error)
   }
