@@ -20,6 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.exceptions import BusinessLogicError, NotFoundError
 from src.core.logging import get_logger
+from src.models import SentenceStatus
 from src.models.chapter import Chapter, ChapterStatus as ModelChapterStatus
 from src.models.paragraph import Paragraph
 from src.models.project import Project
@@ -501,7 +502,7 @@ class ChapterService(BaseService):
             f"删除章节成功: ID={chapter_id}, 标题={chapter.title}, 已删除 {paragraph_count} 个段落, {sentence_count} 个句子")
         return True
 
-    async def get_sentences(self, chapter_id: str, status: ModelChapterStatus = None) -> List[dict]:
+    async def get_sentences(self, chapter_id: str, status: SentenceStatus = None) -> List[Sentence]:
         """
         获取章节的所有句子（一次性加载，用于导演引擎）
 
@@ -510,19 +511,23 @@ class ChapterService(BaseService):
             status: 章节状态过滤条件
 
         Returns:
-            List[dict]: 句子列表，每个句子包含 id 和 content 字段
+            List[Sentence]: 句子列表，每个句子包含 id 和 content 字段
         """
         # 使用 JOIN 一次性查询所有句子，避免 N+1 问题
+        from sqlalchemy.orm import joinedload
         stmt = (
             select(Sentence)
             .join(Paragraph, Sentence.paragraph_id == Paragraph.id)
+            .join(Chapter, Paragraph.chapter_id == Chapter.id)
+            .join(Project, Chapter.project_id == Project.id)
             .where(Paragraph.chapter_id == chapter_id)
+            .options(joinedload(Sentence.paragraph).joinedload(Paragraph.chapter).joinedload(Chapter.project))
             .order_by(Paragraph.order_index).order_by(Sentence.order_index)
         )
 
         # 如果需要，可以根据章节状态过滤句子（示例中未使用）
         if status:
-            stmt.where(Sentence.status == status.value)
+            stmt = stmt.where(Sentence.status == status.value)
 
         result = await self.execute(stmt)
         sentences = result.scalars().all()

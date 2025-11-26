@@ -22,6 +22,7 @@ if TYPE_CHECKING:
 class SentenceStatus(str, Enum):
     PENDING = "pending"
     PROCESSING = "processing"
+    GENERATED_PROMPTS = "generated_prompts"  # 提示词已生成
     COMPLETED = "completed"
     FAILED = "failed"
 

@@ -157,6 +157,7 @@ def retry_failed_project(self, project_id: str, owner_id: str) -> Dict[str, Any]
 )
 def generate_prompts(self, chapter_id: str, api_key_id: str) -> Dict[str, Any]:
     # TODO
+    logger.info(f"接收到：{chapter_id},key_id{api_key_id}")
     pass
 
 

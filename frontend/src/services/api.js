@@ -65,7 +65,7 @@ api.interceptors.response.use(
 
         case 400:
           // 业务错误
-          ElMessage.error(data.message)
+          error.message = data.message
           break
 
         case 422:

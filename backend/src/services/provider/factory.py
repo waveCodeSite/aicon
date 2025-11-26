@@ -2,7 +2,7 @@
 
 from .openai_provider import OpenAIProvider
 from .deepseek_provider import DeepSeekProvider
-from .volcengine_provider import VolcEngineProvider
+from .volcengine_provider import VolcengineProvider
 from .base import BaseLLMProvider
 
 
@@ -18,6 +18,6 @@ class ProviderFactory:
             case "deepseek":
                 return DeepSeekProvider(api_key, kwargs.get("max_concurrency", 5))
             case "volcengine":
-                return VolcEngineProvider(api_key, kwargs.get("max_concurrency", 5))
+                return VolcengineProvider(api_key, kwargs.get("max_concurrency", 5))
             case _:
                 raise ValueError(f"未知 provider: {provider}")
