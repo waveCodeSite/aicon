@@ -15,7 +15,7 @@
         
         <el-form-item v-if="selectedChapterId">
           <el-button type="primary" @click="dialogVisible = true">
-            生成分镜脚本
+            批量生成图片提示词
           </el-button>
         </el-form-item>
       </el-form>
@@ -23,7 +23,7 @@
       <!-- 生成提示词对话框 -->
       <el-dialog
         v-model="dialogVisible"
-        title="生成分镜脚本"
+        title="生成图片提示词"
         width="500px"
       >
         <el-form :inline="false" class="dialog-form">
@@ -304,16 +304,25 @@ const generatePrompts = async () => {
 }
 
 // 处理提示词操作（查看/编辑）
-const handlePromptAction = (action, sentence) => {
-  currentSentence.value = { ...sentence }
-  if (action === 'view') {
-    promptDialogTitle.value = '查看提示词'
-    isEditingPrompt.value = false
-  } else if (action === 'edit') {
-    promptDialogTitle.value = '编辑提示词'
-    isEditingPrompt.value = true
+const handlePromptAction = async (action, sentence) => {
+  try {
+    // 从接口获取最新的句子数据
+    const response = await api.get(`/sentences/${sentence.id}`)
+    const latestSentence = response
+    
+    currentSentence.value = { ...latestSentence }
+    if (action === 'view') {
+      promptDialogTitle.value = '查看提示词'
+      isEditingPrompt.value = false
+    } else if (action === 'edit') {
+      promptDialogTitle.value = '编辑提示词'
+      isEditingPrompt.value = true
+    }
+    promptDialogVisible.value = true
+  } catch (error) {
+    console.error('获取句子数据失败', error)
+    ElMessage.error('获取句子数据失败，请稍后重试')
   }
-  promptDialogVisible.value = true
 }
 
 // 生成单个句子的音频
