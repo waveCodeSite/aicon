@@ -31,8 +31,8 @@ class SentenceSplitter(TextSplitter):
 
     def __init__(
             self,
-            target_min_chars: int = 100,
-            target_max_chars: int = 300,
+            target_min_chars: int = 80,
+            target_max_chars: int = 120,
             strict_mode: bool = True
     ):
         super().__init__()

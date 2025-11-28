@@ -13,7 +13,7 @@
 """
 
 import asyncio
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 from celery import Celery
 
@@ -21,6 +21,7 @@ from src.core.config import settings
 from src.core.logging import get_logger
 from src.services.project_processing import project_processing_service
 from src.services.prompt import prompt_service
+
 logger = get_logger(__name__)
 
 # ---------------------------
@@ -172,6 +173,33 @@ def generate_prompts(self, chapter_id: str, api_key_id: str, style: str):
     logger.info(f"Celery任务开始: generate_prompts (chapter_id={chapter_id})")
     result = run_async_task(prompt_service.generate_prompts_batch(chapter_id, api_key_id, style))
     logger.info(f"Celery任务成功: generate_prompts (chapter_id={chapter_id})")
+
+
+@celery_app.task(
+    bind=True,
+    max_retries=1,
+    autoretry_for=(Exception,),
+    retry_backoff=True,
+    retry_jitter=True,
+    name="generate.generate_prompts"
+)
+def generate_prompts_by_ids(self, sentence_ids: List[str], api_key_id: str, style: str):
+    """
+    为章节生成提示词的 Celery 任务
+
+    该任务仅负责调用服务层的提示词生成逻辑，不包含业务逻辑。
+
+    Args:
+        sentence_ids: 句子ID列表
+        api_key_id: API密钥ID
+        style: 提示词风格
+
+    Returns:
+        Dict[str, Any]: 生成结果
+    """
+    logger.info(f"Celery任务开始: generate_prompts_by_ids (sentence_ids={sentence_ids})")
+    result = run_async_task(prompt_service.generate_prompts_by_ids(sentence_ids, api_key_id, style))
+    logger.info(f"Celery任务成功: generate_prompts_by_ids (chapter_id={sentence_ids})")
 
 
 # ---------------------------

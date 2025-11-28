@@ -94,7 +94,6 @@
             <el-button
               type="primary"
               :loading="loadingStates[sentence.id]?.generatingPrompt"
-              :disabled="!!sentence.image_prompt"
               @click="generateSinglePrompt(sentence)"
               size="small"
             >
