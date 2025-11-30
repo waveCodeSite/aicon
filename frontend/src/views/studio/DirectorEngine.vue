@@ -42,10 +42,25 @@
       <!-- 批量生成图片对话框 -->
       <BatchGenerateImagesDialog
         v-model:visible="batchGenerateImagesVisible"
-        :sentences-ids="currentChapterSentenceIds"
+        :sentences-ids="singleImageSentenceId ? [singleImageSentenceId] : currentChapterSentenceIds"
         :api-keys="apiKeys"
         @generate-success="handleGenerateSuccess"
+        @update:visible="(val) => { if(!val) singleImageSentenceId = null }"
       />
+    </div>
+
+    <!-- 任务状态提示 -->
+    <div v-if="isPolling" class="task-status-bar">
+      <el-alert
+        :title="`任务执行中... 状态: ${taskStatus}`"
+        type="info"
+        :closable="false"
+        show-icon
+      >
+        <template #default>
+          <el-progress :percentage="taskStatus === 'SUCCESS' ? 100 : 50" :status="taskStatus === 'SUCCESS' ? 'success' : ''" />
+        </template>
+      </el-alert>
     </div>
 
     <div class="content-area" v-loading="loading">
@@ -60,6 +75,7 @@
           :loading-states="loadingStates[sentence.id]"
           @prompt-action="handlePromptAction"
           @regenerate-prompt="handleRegeneratePrompt"
+          @regenerate-image="handleRegenerateImage"
           @update:loading-states="(newState) => updateSentenceLoadingState(sentence.id, newState)"
         />
       </div>
@@ -80,6 +96,7 @@
 import { ref, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useDirectorEngine } from '@/composables/useDirectorEngine'
+import { useTaskPoller } from '@/composables/useTaskPoller'
 import GeneratePromptsDialog from '@/components/studio/GeneratePromptsDialog.vue'
 import RegeneratePromptsDialog from '@/components/studio/RegeneratePromptsDialog.vue'
 import BatchGenerateImagesDialog from '@/components/studio/BatchGenerateImagesDialog.vue'
@@ -111,6 +128,12 @@ const {
   handlePromptAction: fetchPromptAction
 } = useDirectorEngine(props.projectId)
 
+const {
+  taskStatus,
+  isPolling,
+  startPolling
+} = useTaskPoller()
+
 // 提示词对话框状态
 const promptDialogVisible = ref(false)
 const promptDialogTitle = ref('')
@@ -123,13 +146,28 @@ const currentChapterSentenceIds = computed(() => {
 })
 
 // 处理生成成功
-const handleGenerateSuccess = async () => {
-  await loadSentences()
+const handleGenerateSuccess = async (taskId) => {
+  if (taskId) {
+    startPolling(taskId, async () => {
+      ElMessage.success('任务执行完成')
+      await loadSentences()
+    })
+  } else {
+    // Fallback for immediate success (if any)
+    await loadSentences()
+  }
 }
 
 // 处理重新生成成功
-const handleRegenerateSuccess = async () => {
-  await loadSentences()
+const handleRegenerateSuccess = async (taskId) => {
+  if (taskId) {
+    startPolling(taskId, async () => {
+      ElMessage.success('重新生成完成')
+      await loadSentences()
+    })
+  } else {
+    await loadSentences()
+  }
 }
 
 // 处理提示词操作（查看/编辑）
@@ -157,6 +195,22 @@ const handleRegeneratePrompt = (sentence) => {
   // 打开重新生成提示词对话框
   regeneratePromptsVisible.value = true
 }
+
+// 处理重新生成图片
+const handleRegenerateImage = (sentence) => {
+  // 设置当前句子ID
+  // Actually BatchGenerateImagesDialog uses currentChapterSentenceIds prop which is computed from sentences.
+  // But for single image, we need to pass just one ID.
+  // Let's check BatchGenerateImagesDialog usage.
+  // It binds :sentences-ids="currentChapterSentenceIds".
+  // We need to change how we use this dialog.
+  
+  // We will use a temporary state for single image generation
+  singleImageSentenceId.value = sentence.id
+  batchGenerateImagesVisible.value = true
+}
+
+const singleImageSentenceId = ref(null)
 
 // 处理提示词保存
 const handlePromptSave = (updatedSentence) => {
@@ -219,5 +273,9 @@ const handlePromptSave = (updatedSentence) => {
     flex-direction: column;
     align-items: stretch;
   }
+}
+
+.task-status-bar {
+  margin-bottom: var(--space-lg);
 }
 </style>

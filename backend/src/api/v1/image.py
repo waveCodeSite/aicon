@@ -64,7 +64,7 @@ async def generate_images_api(
     result = generate_images.delay(request.api_key_id.hex, sentence_ids_hex)
 
     logger.info(f"成功为句子列表 {request.sentences_ids} 投递图片生成任务，任务ID: {result.id}")
-    return ImageGenerateResponse(success=True, message="图片生成任务已提交")
+    return ImageGenerateResponse(success=True, message="图片生成任务已提交", task_id=result.id)
 
 
 __all__ = ["router"]

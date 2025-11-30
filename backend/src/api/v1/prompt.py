@@ -64,7 +64,7 @@ async def generate_prompts(
     await db.commit()
 
     logger.info(f"成功为章节 {request.chapter_id} 投递提示词生成任务，任务ID: {result.id}")
-    return PromptGenerateResponse(success=True, message="提示词生成任务已提交")
+    return PromptGenerateResponse(success=True, message="提示词生成任务已提交", task_id=result.id)
 
 
 @router.post("/generate-prompts-ids", response_model=PromptGenerateResponse)
@@ -84,7 +84,7 @@ async def generate_prompts(
     result = generate_prompts_by_ids.delay(request.sentence_ids, request.api_key_id.hex, request.style)
 
     logger.info(f"成功为章节 {request.sentence_ids} 投递提示词生成任务，任务ID: {result.id}")
-    return PromptGenerateResponse(success=True, message="提示词生成任务已提交，请稍后查看结果。")
+    return PromptGenerateResponse(success=True, message="提示词生成任务已提交，请稍后查看结果。", task_id=result.id)
 
 
 __all__ = ["router"]

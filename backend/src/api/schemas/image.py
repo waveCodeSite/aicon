@@ -1,7 +1,7 @@
 """
 图片生成相关的Pydantic模式
 """
-
+from typing import Optional
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -26,3 +26,4 @@ class ImageGenerateResponse(BaseModel):
     """生成图片响应模型"""
     success: bool = Field(..., description="是否成功")
     message: str = Field(..., description="响应消息")
+    task_id: Optional[str] = Field(None, description="任务ID")

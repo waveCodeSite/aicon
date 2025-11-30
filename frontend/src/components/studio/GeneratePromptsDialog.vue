@@ -105,7 +105,7 @@ const handleGenerate = async () => {
     if (response.success) {
       ElMessage.success(response.message)
       updateDialogVisible(false)
-      emit('generate-success')
+      emit('generate-success', response.task_id)
       resetForm()
     }
   } catch (error) {

@@ -87,7 +87,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['prompt-action', 'regenerate-prompt', 'update:loadingStates'])
+const emit = defineEmits(['prompt-action', 'regenerate-prompt', 'regenerate-image', 'update:loadingStates'])
 
 // 处理提示词操作（查看/编辑）
 const handlePromptAction = async (action) => {
@@ -136,36 +136,8 @@ const handleGenerateAudio = async () => {
 }
 
 // 处理生成图片
-const handleGenerateImage = async () => {
-  // 更新加载状态
-  emit('update:loadingStates', {
-    ...props.loadingStates,
-    generatingImage: true
-  })
-  
-  try {
-    const response = await api.post('/image/generate-images', {
-      sentence_id: props.sentence.id
-    })
-    
-    if (response.success) {
-      ElMessage.success('图片生成成功')
-      // 可以通过事件通知父组件更新句子数据
-      emit('image-generated', {
-        sentenceId: props.sentence.id,
-        imageUrl: response.image_url
-      })
-    }
-  } catch (error) {
-    console.error('生成单个图片失败', error)
-    ElMessage.error('生成图片失败: ' + (error.response?.data?.detail || error.message))
-  } finally {
-    // 重置加载状态
-    emit('update:loadingStates', {
-      ...props.loadingStates,
-      generatingImage: false
-    })
-  }
+const handleGenerateImage = () => {
+  emit('regenerate-image', props.sentence)
 }
 </script>
 

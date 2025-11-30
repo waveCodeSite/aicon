@@ -138,10 +138,6 @@ async def update_paragraph(
         updates['content'] = paragraph_data.content
     if paragraph_data.action is not None:
         updates['action'] = paragraph_data.action
-    if paragraph_data.edited_content is not None:
-        updates['edited_content'] = paragraph_data.edited_content
-    if paragraph_data.ignore_reason is not None:
-        updates['ignore_reason'] = paragraph_data.ignore_reason
 
     if not updates:
         raise HTTPException(

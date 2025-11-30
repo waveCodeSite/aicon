@@ -39,7 +39,7 @@ const props = defineProps({
     default: false
   },
   sentencesIds: {
-    type: Array,
+    type: [Array, String],
     required: true
   },
   apiKeys: {
@@ -85,15 +85,16 @@ const handleGenerate = async () => {
   
   generating.value = true
   try {
+    const ids = Array.isArray(props.sentencesIds) ? props.sentencesIds : [props.sentencesIds]
     const response = await api.post('/image/generate-images', {
-      sentences_ids: props.sentencesIds,
+      sentences_ids: ids,
       api_key_id: selectedApiKey.value
     })
     
     if (response.success) {
       ElMessage.success(response.message)
       updateDialogVisible(false)
-      emit('generate-success')
+      emit('generate-success', response.task_id)
       resetForm()
     }
   } catch (error) {

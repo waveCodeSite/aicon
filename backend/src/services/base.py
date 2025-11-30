@@ -159,7 +159,7 @@ class BaseService:
         Args:
             obj: 要添加的数据库对象
         """
-        await self.db_session.add(obj)
+        self.db_session.add(obj)
         logger.debug(f"{self.__class__.__name__} 添加对象到会话")
 
     async def delete(self, obj):
@@ -169,7 +169,7 @@ class BaseService:
         Args:
             obj: 要删除的数据库对象
         """
-        await self.db_session.delete(obj)
+        self.db_session.delete(obj)
         logger.debug(f"{self.__class__.__name__} 从会话中删除对象")
 
     async def get(self, model_class, identifier):

@@ -146,10 +146,6 @@ async def update_chapter(
         updates['title'] = chapter_data.title
     if chapter_data.content is not None:
         updates['content'] = chapter_data.content
-    if chapter_data.edited_content is not None:
-        updates['edited_content'] = chapter_data.edited_content
-    if chapter_data.editing_notes is not None:
-        updates['editing_notes'] = chapter_data.editing_notes
     if chapter_data.chapter_number is not None:
         updates['chapter_number'] = chapter_data.chapter_number
 

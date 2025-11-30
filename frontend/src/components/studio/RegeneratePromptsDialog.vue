@@ -105,7 +105,7 @@ const handleRegenerate = async () => {
     if (response.success) {
       ElMessage.success(response.message)
       updateDialogVisible(false)
-      emit('regenerate-success')
+      emit('regenerate-success', response.task_id)
       resetForm()
     }
   } catch (error) {

@@ -68,6 +68,7 @@ def upgrade():
         sa.Column('order_index', sa.Integer(), nullable=False, comment='在段落中的顺序'),
         sa.Column('word_count', sa.Integer(), default=0, comment='字数统计'),
         sa.Column('character_count', sa.Integer(), default=0, comment='字符数统计'),
+        sa.Column('image_style',  sa.String(length=50), nullable=True, comment='图片风格'),
         sa.Column('image_url', sa.String(length=500), nullable=True, comment='生成的图片URL'),
         sa.Column('image_prompt', sa.Text(), nullable=True, comment='图片生成提示词'),
         sa.Column('audio_url', sa.String(length=500), nullable=True, comment='生成的音频URL'),

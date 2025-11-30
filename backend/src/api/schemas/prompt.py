@@ -51,6 +51,7 @@ class PromptGenerateResponse(BaseModel):
     """生成提示词响应模型"""
     success: bool = Field(..., description="是否成功")
     message: str = Field(..., description="响应消息")
+    task_id: Optional[str] = Field(None, description="任务ID")
 
     model_config = {
         "json_schema_extra": {
