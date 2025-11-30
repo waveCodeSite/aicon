@@ -1,25 +1,26 @@
-import asyncio
 import uuid
+import asyncio
+import random
+import io
+import aiohttp
 from typing import List
 
-import aiohttp
+from fastapi import UploadFile
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
-
 from src.core.exceptions import NotFoundError
 from src.core.logging import get_logger
-from src.models import Sentence, APIKey, SentenceStatus, Paragraph, Chapter
+from src.models import Sentence, SentenceStatus, Paragraph, Chapter
 from src.services.api_key import APIKeyService
 from src.services.base import SessionManagedService
 from src.services.provider.base import BaseLLMProvider
 from src.services.provider.factory import ProviderFactory
 from src.utils.storage import get_storage_client
+from openai import RateLimitError
 
 logger = get_logger(__name__)
 
-import asyncio
-import random
-from openai import RateLimitError
+
 
 
 async def retry_with_backoff(task_fn, max_retries=5):
@@ -104,7 +105,7 @@ class ImageService(SessionManagedService):
                     .selectinload(Paragraph.chapter)
                     .selectinload(Chapter.project)
                 )
-            ).limit(5)
+            )
             result = await self.execute(stmt)
             sentences = result.scalars().all()
 
@@ -153,15 +154,23 @@ class ImageService(SessionManagedService):
                                 logger.error(f"[Download] 失败 {resp.status} url={image_url}")
                                 continue
                             content = await resp.read()
+                            # 要保存为临时文件上传到minio上
+
+
                     except Exception as e:
                         logger.error(f"[Download] 图片下载错误: {e}")
                         continue
 
                     # --- 上传 MinIO ---
                     file_id = str(uuid.uuid4())
+                    upload_file = UploadFile(
+                        filename=f"{file_id}.jpg",
+                        file=io.BytesIO(content),
+                    )
+
                     storage_result = await storage_client.upload_file(
                         user_id=user_id,
-                        file=content,
+                        file=upload_file,
                         metadata={
                             "user_id": user_id,
                             "file_id": file_id,
