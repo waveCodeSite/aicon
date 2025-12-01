@@ -11,13 +11,15 @@ class ImageGenerateRequest(BaseModel):
     """生成图片请求模型"""
     sentences_ids: list[UUID] = Field(..., description="句子ID列表")
     api_key_id: UUID = Field(..., description="API密钥ID")
+    model: Optional[str] = Field(None, description="模型名称")
     
     class Config:
         """配置"""
         json_schema_extra = {
             "example": {
                 "sentences_ids": ["123e4567-e89b-12d3-a456-426614174000", "223e4567-e89b-12d3-a456-426614174111"],
-                "api_key_id": "123e4567-e89b-12d3-a456-426614174000"
+                "api_key_id": "123e4567-e89b-12d3-a456-426614174000",
+                "model": "dall-e-3"
             }
         }
 

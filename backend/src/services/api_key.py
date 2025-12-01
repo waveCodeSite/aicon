@@ -236,13 +236,14 @@ class APIKeyService(BaseService):
         return api_keys
 
 
-    async def get_models(self, key_id: str, user_id: str) -> List[str]:
+    async def get_models(self, key_id: str, user_id: str, model_type: str = "text") -> List[str]:
         """
         获取API密钥可用的模型列表
         
         Args:
             key_id: 密钥ID
             user_id: 用户ID
+            model_type: 模型类型，text 或 image
             
         Returns:
             模型名称列表
@@ -261,7 +262,7 @@ class APIKeyService(BaseService):
                     response = await client.get(
                         "https://api.siliconflow.cn/v1/models",
                         headers={"Authorization": f"Bearer {decrypted_key}"},
-                        params={"type": "text"}, # 只获取文本模型
+                        params={"type": model_type},
                         timeout=10.0
                     )
                     
@@ -278,7 +279,10 @@ class APIKeyService(BaseService):
                 return []
                 
         elif provider == 'custom':
-            return ['deepseek-chat', 'deepseek-r1']
+            if model_type == "image":
+                return ['dall-e-3', 'doubao-seedream-3-0-t2i-250415', 'doubao-seedream-4-0-250828']
+            else:
+                return ['deepseek-chat', 'deepseek-r1']
             
         return []
 

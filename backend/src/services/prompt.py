@@ -191,28 +191,20 @@ class PromptService(SessionManagedService):
             dict: 统计信息 {"total": int, "success": int, "failed": int}
         """
 
-        # 构建完整系统提示词：如果提供了custom_prompt，使用它；否则使用默认模板
-        if custom_prompt:
-            system_prompt = custom_prompt
-            logger.info("[SYS] 使用自定义系统提示词")
-        else:
-            system_prompt = self._build_system_prompt(style)
-            logger.info(f"[SYS] 使用提示词风格: {style}")
-
         # 创建 LLM provider 实例
         llm_provider = ProviderFactory.create(
             provider=api_key.provider,
             api_key=api_key.get_api_key(),
-            max_concurrency=5,
+            max_concurrency=20,
             base_url=api_key.base_url if api_key.base_url else None,
         )
 
         # 建立并发信号量（限制同一时刻的 LLM 请求数量）
-        semaphore = asyncio.Semaphore(5)
+        semaphore = asyncio.Semaphore(20)
 
         # 构建所有句子的任务列表
         tasks = [
-            process_sentence(sentence, api_key, llm_provider, system_prompt, semaphore, model)
+            process_sentence(sentence, api_key, llm_provider, custom_prompt, semaphore, model)
             for sentence in sentences
         ]
 
@@ -284,7 +276,7 @@ class PromptService(SessionManagedService):
         async with self:
             # 查询章节句子
             chapter_service = ChapterService(self.db_session)
-            sentences = await chapter_service.get_sentences(chapter_id, SentenceStatus.PENDING)
+            sentences = await chapter_service.get_sentences(chapter_id)
 
             if not sentences:
                 raise NotFoundError("未找到待处理句子", resource_id=chapter_id, resource_type="chapter")

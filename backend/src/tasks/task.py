@@ -217,7 +217,7 @@ def generate_prompts_by_ids(self, sentence_ids: List[str], api_key_id: str, styl
     retry_jitter=True,
     name="generate.generate_images"
 )
-def generate_images(self, api_key_id: str, sentences_ids: list[str]):
+def generate_images(self, api_key_id: str, sentences_ids: list[str], model: str = None):
     """
     为章节或指定句子批量生成图片的 Celery 任务
 
@@ -226,6 +226,7 @@ def generate_images(self, api_key_id: str, sentences_ids: list[str]):
     Args:
         api_key_id: API密钥ID
         sentences_ids: 句子ID列表（可选，与chapter_id二选一）
+        model: 模型名称
 
     Returns:
         Dict[str, Any]: 生成结果，包含统计信息
@@ -233,7 +234,7 @@ def generate_images(self, api_key_id: str, sentences_ids: list[str]):
 
     logger.info(f"Celery任务开始: generate_images (sentences_ids={sentences_ids})")
 
-    result = run_async_task(image_service.generate_images(api_key_id, sentences_ids))
+    result = run_async_task(image_service.generate_images(api_key_id, sentences_ids, model))
     logger.info(f"Celery任务成功: generate_images (sentences_ids={sentences_ids})")
     return result
 

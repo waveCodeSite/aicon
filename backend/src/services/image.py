@@ -64,6 +64,7 @@ async def process_sentence(
         storage_client,
         user_id: str,
         db_session=None,
+        model: str = None,
 ):
     """
     单句 LLM 图片生成任务（含限流、错误透传）。
@@ -75,16 +76,21 @@ async def process_sentence(
         storage_client: 存储客户端实例
         user_id: 用户ID
         db_session: 可选的数据库会话
+        model: 模型名称
     """
     async with semaphore:
         try:
             logger.info(f"[LLM] 处理句子 {sentence.id}")
 
             # 加入重试机制
-            model_name = 'Qwen/Qwen-Image'
-            if llm_provider.__class__.__name__ == "CustomProvider":
-                model_name = 'sora_image'
-                model_name = 'doubao-seedream-3-0-t2i-250415'
+            # 如果提供了model，使用它；否则根据供应商选择默认模型
+            if model:
+                model_name = model
+            else:
+                model_name = 'Qwen/Qwen-Image'
+                if llm_provider.__class__.__name__ == "CustomProvider":
+                    model_name = 'doubao-seedream-3-0-t2i-250415'
+            
             result = await retry_with_backoff(
                 lambda: llm_provider.generate_image(
                     prompt=sentence.image_prompt,
@@ -145,7 +151,7 @@ async def process_sentence(
 
 class ImageService(SessionManagedService):
 
-    async def generate_images(self, api_key_id: str, sentence_ids: List[str]) -> dict:
+    async def generate_images(self, api_key_id: str, sentence_ids: List[str], model: str = None) -> dict:
         async with self:
             # --- 1. 查询 Sentence ----
             stmt = (
@@ -174,18 +180,18 @@ class ImageService(SessionManagedService):
             llm_provider = ProviderFactory.create(
                 provider=api_key.provider,
                 api_key=api_key.get_api_key(),
-                max_concurrency=5,
+                max_concurrency=20,
                 base_url=api_key.base_url if api_key.base_url else None,
             )
             logger.info(f"[LLM] 使用 Provider: {llm_provider}, API Key ID: {api_key.id},Base URL: {api_key.base_url}")
 
             # --- 4. 创建统一并发控制 ---
-            semaphore = asyncio.Semaphore(5)
+            semaphore = asyncio.Semaphore(20)
 
             # --- 5. 创建任务列表 ---
             storage_client = await get_storage_client()
             tasks = [
-                process_sentence(sentence, llm_provider, semaphore, storage_client, user_id, self.db_session)
+                process_sentence(sentence, llm_provider, semaphore, storage_client, user_id, self.db_session, model)
                 for sentence in sentences
             ]
 

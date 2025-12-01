@@ -61,7 +61,7 @@ async def generate_images_api(
 
     # 5. 投递任务到celery
     sentence_ids_hex = [sentence_id.hex for sentence_id in request.sentences_ids]
-    result = generate_images.delay(request.api_key_id.hex, sentence_ids_hex)
+    result = generate_images.delay(request.api_key_id.hex, sentence_ids_hex, request.model)
 
     logger.info(f"成功为句子列表 {request.sentences_ids} 投递图片生成任务，任务ID: {result.id}")
     return ImageGenerateResponse(success=True, message="图片生成任务已提交", task_id=result.id)
