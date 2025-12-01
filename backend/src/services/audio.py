@@ -85,6 +85,7 @@ async def process_sentence(
 
             # 加入重试机制
             # 注意：OpenAI audio API 返回的是二进制内容，不是 URL
+            # 对于 SiliconFlow，voice 格式为 "model:voice_name"，例如 "FunAudioLLM/CosyVoice2-0.5B:alex"
             response = await retry_with_backoff(
                 lambda: llm_provider.generate_audio(
                     input_text=sentence.content,

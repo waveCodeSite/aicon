@@ -237,7 +237,7 @@ if __name__ == "__main__":
         service = ImageService()
         result = await service.generate_images(
             api_key_id="6861e67b-6731-4dca-b215-aade208b627f",
-            sentence_ids=["0bbe271a-e0d6-4565-be58-9c3d5898d732"]
+            sentence_ids=["0bbe271a-e0d6-4565-be58-9c3d5898d732","abfb01b7-58d9-4fb0-849d-e9e5cdef6205",""]
         )
         print(result)
 
