@@ -83,6 +83,18 @@ export const chaptersService = {
    */
   async confirmChapter(chapterId) {
     return await api.put(`/chapters/${chapterId}/confirm`)
+  },
+
+  /**
+   * 检查章节素材是否准备就绪
+   * @param {string} chapterId 章节ID
+   * @param {boolean} updateStatus 是否自动更新章节状态
+   * @returns {Promise<Object>}
+   */
+  async checkChapterMaterials(chapterId, updateStatus = true) {
+    return await api.get(`/chapters/${chapterId}/check-materials`, {
+      params: { update_status: updateStatus }
+    })
   }
 }
 

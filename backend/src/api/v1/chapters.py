@@ -283,4 +283,79 @@ async def get_chapter_sentences(
     }
 
 
+@router.get("/{chapter_id}/check-materials", response_model=dict)
+async def check_chapter_materials(
+        *,
+        current_user: User = Depends(get_current_user_required),
+        db: AsyncSession = Depends(get_db),
+        chapter_id: str,
+        update_status: bool = Query(True, description="是否自动更新章节状态")
+):
+    """检查章节的所有句子是否准备好所需素材"""
+    chapter_service = ChapterService(db)
+    
+    # 获取章节并验证权限
+    chapter = await chapter_service.get_chapter_by_id(chapter_id)
+    project_service = ProjectService(db)
+    await project_service.get_project_by_id(chapter.project_id, current_user.id)
+    
+    # 获取所有句子
+    sentences = await chapter_service.get_sentences(chapter_id=chapter_id)
+    
+    total_sentences = len(sentences)
+    ready_count = 0
+    missing_materials = {
+        "prompts": 0,
+        "images": 0,
+        "audio": 0
+    }
+    missing_sentences = []
+    
+    # 检查每个句子的素材
+    for sentence in sentences:
+        sentence_missing = []
+        
+        if not sentence.image_prompt:
+            missing_materials["prompts"] += 1
+            sentence_missing.append("prompt")
+        
+        if not sentence.image_url:
+            missing_materials["images"] += 1
+            sentence_missing.append("image")
+        
+        if not sentence.audio_url:
+            missing_materials["audio"] += 1
+            sentence_missing.append("audio")
+        
+        if sentence_missing:
+            missing_sentences.append({
+                "sentence_id": str(sentence.id),
+                "content": sentence.content[:50] + "..." if len(sentence.content) > 50 else sentence.content,
+                "missing": sentence_missing
+            })
+        else:
+            ready_count += 1
+    
+    all_ready = ready_count == total_sentences and total_sentences > 0
+    
+    # 如果所有素材都准备好了，且需要更新状态
+    if all_ready and update_status:
+        # 更新章节状态为 materials_prepared
+        await chapter_service.update_chapter(
+            chapter_id=chapter_id,
+            project_id=chapter.project_id,
+            status=ModelChapterStatus.MATERIALS_PREPARED
+        )
+    
+    return {
+        "all_ready": all_ready,
+        "total_sentences": total_sentences,
+        "ready_count": ready_count,
+        "missing_materials": missing_materials,
+        "missing_sentences": missing_sentences,
+        "chapter_status": ModelChapterStatus.MATERIALS_PREPARED.value if all_ready else chapter.status
+    }
+
+
+
 __all__ = ["router"]

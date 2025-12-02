@@ -66,6 +66,10 @@
           <el-button type="success"  @click="batchGenerateAudioVisible = true">
             批量生成音频
           </el-button>
+          <el-button type="info" @click="handleCheckMaterials" :loading="checkingMaterials">
+            <el-icon><DocumentChecked /></el-icon>
+            检测素材
+          </el-button>
         </div>
       </el-form>
       
@@ -116,6 +120,7 @@
           :loading-states="loadingStates[sentence.id]"
           @prompt-action="handlePromptAction"
           @regenerate-prompt="handleRegeneratePrompt"
+          @preview="handlePreview"
           @regenerate-image="handleRegenerateImage"
           @generate-audio="handleGenerateAudio"
           @update:loading-states="(newState) => updateSentenceLoadingState(sentence.id, newState)"
@@ -131,6 +136,21 @@
       :dialog-title="promptDialogTitle"
       @save="handlePromptSave"
     />
+    
+    <!-- 素材检测对话框 -->
+    <MaterialCheckDialog
+      v-model:visible="materialCheckVisible"
+      :loading="checkingMaterials"
+      :result="materialCheckResult"
+      @generate="handleGenerateMissingMaterials"
+    />
+    
+    <!-- 素材预览对话框 -->
+    <MaterialPreviewDialog
+      v-model:visible="previewDialogVisible"
+      :type="previewType"
+      :content="previewContent"
+    />
   </div>
 </template>
 
@@ -145,6 +165,9 @@ import BatchGenerateImagesDialog from '@/components/studio/BatchGenerateImagesDi
 import GenerateAudioDialog from '@/components/studio/GenerateAudioDialog.vue'
 import SentenceCard from '@/components/studio/SentenceCard.vue'
 import PromptDialog from '@/components/studio/PromptDialog.vue'
+import MaterialCheckDialog from '@/components/studio/MaterialCheckDialog.vue'
+import MaterialPreviewDialog from '@/components/studio/MaterialPreviewDialog.vue'
+import { DocumentChecked } from '@element-plus/icons-vue'
 
 // Props
 const props = defineProps({
@@ -184,6 +207,16 @@ const {
 
 // 任务完成统计信息
 const taskCompletionStats = ref(null)
+
+// 素材检测状态
+const checkingMaterials = ref(false)
+const materialCheckVisible = ref(false)
+const materialCheckResult = ref(null)
+
+// 预览状态
+const previewDialogVisible = ref(false)
+const previewType = ref('prompt')
+const previewContent = ref('')
 
 // 加载文本
 const loadingText = computed(() => {
@@ -349,6 +382,55 @@ const handlePromptSave = (updatedSentence) => {
   if (index !== -1) {
     sentences.value[index].image_prompt = updatedSentence.image_prompt
   }
+}
+
+// 处理检测素材
+const handleCheckMaterials = async () => {
+  if (!selectedChapterId.value) {
+    ElMessage.warning('请先选择章节')
+    return
+  }
+  
+  checkingMaterials.value = true
+  materialCheckResult.value = null
+  
+  try {
+    const { chaptersService } = await import('@/services/chapters')
+    const response = await chaptersService.checkChapterMaterials(selectedChapterId.value)
+
+    materialCheckResult.value = response
+    materialCheckVisible.value = true
+    
+    // 如果所有素材都准备好，显示成功消息
+    if (response.all_ready) {
+      ElMessage.success('所有素材已准备就绪，章节状态已更新')
+      // 重新加载句子列表以更新状态
+      await loadSentences()
+    }
+  } catch (error) {
+    console.error('检测素材失败:', error)
+    ElMessage.error('检测素材失败，请重试')
+  } finally {
+    checkingMaterials.value = false
+  }
+}
+
+// 处理生成缺失的素材
+const handleGenerateMissingMaterials = () => {
+  // 这里可以根据缺失的素材类型打开相应的生成对话框
+  ElMessage.info('请使用批量生成按钮生成缺失的素材')
+}
+
+// 处理预览
+const handlePreview = ({ type, content }) => {
+  if (!content) {
+    ElMessage.warning('暂无可预览的内容')
+    return
+  }
+  
+  previewType.value = type
+  previewContent.value = content
+  previewDialogVisible.value = true
 }
 </script>
 

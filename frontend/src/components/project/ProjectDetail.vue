@@ -141,7 +141,7 @@
           进入内容工坊
         </el-button>
         <el-button
-          type="success"
+          type="primary"
           @click="handleOpenDirector"
         >
           导演引擎

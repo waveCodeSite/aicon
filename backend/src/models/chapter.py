@@ -23,6 +23,7 @@ class ChapterStatus(str, Enum):
     CONFIRMED = "confirmed"
     GENERATING_PROMPTS = "generating_prompts"  # 生成提示词中
     GENERATED_PROMPTS = "generated_prompts"  # 提示词已生成
+    MATERIALS_PREPARED = "materials_prepared"  # 素材已准备
     GENERATING_VIDEO = "generating_video"  # 生成视频中
     PROCESSING = "processing"
     COMPLETED = "completed"

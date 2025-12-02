@@ -7,9 +7,39 @@
       <div class="card-header">
         <span class="card-index">#{{ index + 1 }}</span>
         <div class="header-actions">
-          <el-tag v-if="sentence.image_prompt" size="small" type="info" effect="plain">提示词</el-tag>
-          <el-tag v-if="sentence.image_url" size="small" type="success" effect="plain">图片</el-tag>
-          <el-tag v-if="sentence.audio_url" size="small" type="warning" effect="plain">音频</el-tag>
+          <el-tag 
+            v-if="sentence.image_prompt" 
+            size="small" 
+            type="info" 
+            effect="plain"
+            class="clickable-tag"
+            @click="handlePreview('prompt')"
+          >
+            <el-icon><Document /></el-icon>
+            提示词
+          </el-tag>
+          <el-tag 
+            v-if="sentence.image_url" 
+            size="small" 
+            type="success" 
+            effect="plain"
+            class="clickable-tag"
+            @click="handlePreview('image')"
+          >
+            <el-icon><Picture /></el-icon>
+            图片
+          </el-tag>
+          <el-tag 
+            v-if="sentence.audio_url" 
+            size="small" 
+            type="warning" 
+            effect="plain"
+            class="clickable-tag"
+            @click="handlePreview('audio')"
+          >
+            <el-icon><Microphone /></el-icon>
+            音频
+          </el-tag>
           <el-dropdown @command="handlePromptAction" trigger="click">
             <span class="el-dropdown-link">
               <el-icon><MoreFilled /></el-icon>
@@ -73,7 +103,7 @@
 
 <script setup>
 import { defineProps, defineEmits } from 'vue'
-import { MoreFilled, MagicStick, Microphone, Picture } from '@element-plus/icons-vue'
+import { MoreFilled, MagicStick, Microphone, Picture, Document } from '@element-plus/icons-vue'
 
 const props = defineProps({
   sentence: {
@@ -94,7 +124,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['prompt-action', 'regenerate-prompt', 'regenerate-image', 'generate-audio', 'update:loadingStates'])
+const emit = defineEmits(['prompt-action', 'regenerate-prompt', 'regenerate-image', 'generate-audio', 'update:loadingStates', 'preview'])
 
 // 处理提示词操作（查看/编辑）
 const handlePromptAction = async (action) => {
@@ -117,6 +147,25 @@ const handleGenerateAudio = () => {
 // 处理生成图片
 const handleGenerateImage = () => {
   emit('regenerate-image', props.sentence)
+}
+
+// 处理预览
+const handlePreview = (type) => {
+  let content = ''
+  
+  switch(type) {
+    case 'prompt':
+      content = props.sentence.image_prompt
+      break
+    case 'image':
+      content = props.sentence.image_url
+      break
+    case 'audio':
+      content = props.sentence.audio_url
+      break
+  }
+  
+  emit('preview', { type, content })
 }
 </script>
 
@@ -159,6 +208,21 @@ const handleGenerateImage = () => {
   display: flex;
   align-items: center;
   gap: var(--space-sm);
+}
+
+/* 可点击标签样式 */
+.clickable-tag {
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.clickable-tag:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+  opacity: 0.8;
 }
 
 /* 下拉菜单样式 */

@@ -12,7 +12,7 @@
 - 异常处理遵循统一策略
 - 方法职责单一，保持简洁
 """
-
+from datetime import timedelta
 from typing import List, Optional, Tuple
 
 from sqlalchemy import desc, func, or_, select
@@ -29,6 +29,29 @@ from src.services.base import BaseService
 from src.services.chapter_content_parser import chapter_content_parser
 
 logger = get_logger(__name__)
+
+
+def _attach_media_url(sentence: Sentence):
+    """
+    为句子的媒体URL添加完整的访问域名
+
+    Args:
+        sentence: 句子对象
+
+    Returns:
+        处理后的句子对象
+    """
+    from src.utils.storage import storage_client
+
+    if sentence.image_url and not sentence.image_url.startswith("http"):
+        # 使用预签名URL获取可访问的完整URL
+        sentence.image_url = storage_client.get_presigned_url(sentence.image_url, timedelta(hours=6))
+
+    if sentence.audio_url and not sentence.audio_url.startswith("http"):
+        # 使用预签名URL获取可访问的完整URL
+        sentence.audio_url = storage_client.get_presigned_url(sentence.audio_url, timedelta(hours=6))
+
+    return sentence
 
 
 class ChapterService(BaseService):
@@ -344,19 +367,13 @@ class ChapterService(BaseService):
         """
         chapter = await self.get_chapter_by_id(chapter_id, project_id)
 
-        # 检查是否已确认（已确认的章节不能修改）
-        if chapter.is_confirmed:
-            raise BusinessLogicError(
-                "已确认的章节不能修改",
-            )
-
         # 更新字段
         for field, value in updates.items():
             if hasattr(chapter, field) and value is not None:
                 setattr(chapter, field, value)
 
         # 如果更新了内容，使用内容解析服务重新计算统计信息并更新段落句子结构
-        if 'content' in updates and updates['content']:
+        if 'content' in updates and updates['content'] and not chapter.is_confirmed:
             content = updates['content']
             stats, paragraphs_data, sentences_data = await chapter_content_parser.parse_content_with_structure(
                 chapter_id=chapter.id,
@@ -503,8 +520,8 @@ class ChapterService(BaseService):
         return True
 
     async def get_sentences(
-            self, 
-            chapter_id: str, 
+            self,
+            chapter_id: str,
             status: SentenceStatus = None,
             has_prompt: Optional[bool] = None,
             has_image: Optional[bool] = None,
@@ -538,21 +555,21 @@ class ChapterService(BaseService):
         # 如果需要，可以根据章节状态过滤句子（示例中未使用）
         if status:
             stmt = stmt.where(Sentence.status == status.value)
-            
+
         # 提示词过滤
         if has_prompt is not None:
             if has_prompt:
                 stmt = stmt.where(Sentence.image_prompt.isnot(None), Sentence.image_prompt != "")
             else:
                 stmt = stmt.where(or_(Sentence.image_prompt.is_(None), Sentence.image_prompt == ""))
-                
+
         # 图片过滤
         if has_image is not None:
             if has_image:
                 stmt = stmt.where(Sentence.image_url.isnot(None), Sentence.image_url != "")
             else:
                 stmt = stmt.where(or_(Sentence.image_url.is_(None), Sentence.image_url == ""))
-                
+
         # 音频过滤
         if has_audio is not None:
             if has_audio:
@@ -562,6 +579,9 @@ class ChapterService(BaseService):
 
         result = await self.execute(stmt)
         sentences = result.scalars().all()
+
+        # oos的素材要加上域名
+        sentences = [_attach_media_url(sentence) for sentence in sentences]
 
         return sentences
 
