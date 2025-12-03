@@ -282,10 +282,13 @@ class MinIOStorage:
             # 确保目标目录存在
             Path(dest_path).parent.mkdir(parents=True, exist_ok=True)
 
-            # 写入文件
-            async with aiofiles.open(dest_path, 'wb') as f:
-                async for chunk in response.stream(8192):
-                    await f.write(chunk)
+            # MinIO的stream()返回同步生成器，使用同步写入
+            with open(dest_path, 'wb') as f:
+                for chunk in response.stream(8192):
+                    f.write(chunk)
+            
+            response.close()
+            response.release_conn()
 
             logger.info(f"文件下载成功: {object_key} -> {dest_path}")
 

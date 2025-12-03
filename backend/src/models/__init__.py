@@ -9,6 +9,7 @@ from src.models.paragraph import Paragraph, ParagraphAction
 from src.models.project import Project, ProjectStatus
 from src.models.sentence import Sentence, SentenceStatus
 from src.models.user import User
+from src.models.video_task import VideoTask, VideoTaskStatus
 
 __all__ = [
     "Base",
@@ -25,4 +26,6 @@ __all__ = [
     "APIKey",
     "APIKeyStatus",
     "APIKeyProvider",
+    "VideoTask",
+    "VideoTaskStatus",
 ]

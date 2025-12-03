@@ -100,7 +100,12 @@ class WhisperTranscriptionService:
 
         return results, srt_content
 
+transcription_service = WhisperTranscriptionService()
 
+all = [
+    "WhisperTranscriptionService",
+    "transcription_service"
+]
 
 
 # -------------------------
@@ -109,10 +114,7 @@ class WhisperTranscriptionService:
 
 if __name__ == "__main__":
     INPUT_FILE = "test.mp3"
-
-    service = WhisperTranscriptionService(model_size="small")
-
     if not os.path.exists(INPUT_FILE):
         logger.info(f"❌ 错误: 找不到文件 {INPUT_FILE}")
     else:
-        service.transcribe(INPUT_FILE, output_format="all")
+        transcription_service.transcribe(INPUT_FILE, output_format="all")
