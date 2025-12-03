@@ -223,9 +223,25 @@ class VideoSynthesisService(SessionManagedService):
             font_size = subtitle_style.get("font_size", 70)  # 适中字号
             color = subtitle_style.get("color", "white")
 
-            # 固定位置：画面下方
-            # 4:3横屏（1080px高度）：字幕固定在y=900
-            fixed_y_pos = 900
+            # 动态计算字幕位置
+            resolution = gen_setting.get("resolution", "1440x1080")
+            try:
+                w_str, h_str = resolution.split('x')
+                width = int(w_str)
+                height = int(h_str)
+            except:
+                width = 1440
+                height = 1080
+            
+            # 根据宽高比决定位置
+            # 竖屏 (9:16) -> 下方30%处 (避开抖音/快手底部UI)
+            # 横屏 (16:9, 4:3) -> 下方15%处
+            if height > width:
+                fixed_y_pos = int(height * 0.7)
+            else:
+                fixed_y_pos = int(height * 0.85)
+            
+            logger.info(f"视频分辨率: {width}x{height}, 字幕Y坐标: {fixed_y_pos}")
             
             # 标点符号正则（用于检测断句）
             import re

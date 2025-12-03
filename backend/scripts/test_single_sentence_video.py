@@ -66,7 +66,7 @@ async def test_single_sentence(sentence_id: str):
             
             # 4:3横屏设置
             gen_setting = {
-                "resolution": "1440x1080",  # 4:3横屏
+                "resolution": "1080x1920",  # 4:3横屏
                 "fps": 30,
                 "video_codec": "libx264",
                 "audio_codec": "aac",
