@@ -144,6 +144,7 @@ const {
   stats,
   pagination,
   fetchBGMs,
+  getBGM,
   deleteBGM,
   refreshStats,
   changePage,
@@ -177,9 +178,15 @@ const formatFileSize = (bytes) => {
   return mb < 1 ? `${(bytes / 1024).toFixed(2)} KB` : `${mb.toFixed(2)} MB`
 }
 
-const previewBGM = (bgm) => {
-  currentBGM.value = bgm
-  showPreviewDialog.value = true
+const previewBGM = async (bgm) => {
+  try {
+    // 获取最新的BGM信息（包含最新的预签名URL）
+    const freshBGM = await getBGM(bgm.id)
+    currentBGM.value = freshBGM
+    showPreviewDialog.value = true
+  } catch (error) {
+    // 错误已在composable中处理
+  }
 }
 
 const handleDelete = async (bgm) => {

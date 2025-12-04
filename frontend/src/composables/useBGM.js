@@ -56,6 +56,20 @@ export function useBGM() {
     }
 
     /**
+     * 获取单个BGM详情
+     */
+    const getBGM = async (id) => {
+        try {
+            const response = await bgmService.getBGM(id)
+            return response
+        } catch (error) {
+            console.error('获取BGM详情失败:', error)
+            ElMessage.error('获取BGM详情失败')
+            throw error
+        }
+    }
+
+    /**
      * 上传BGM
      */
     const uploadBGM = async (file, name) => {
@@ -129,6 +143,7 @@ export function useBGM() {
 
         // 方法
         fetchBGMs,
+        getBGM,
         uploadBGM,
         deleteBGM,
         refreshStats,
