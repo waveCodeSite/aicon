@@ -122,6 +122,7 @@
             />
           </el-form-item>
           
+          
           <el-form-item label="缩放速度" v-if="enableZoom">
             <el-slider 
               v-model="zoomSpeedDisplay" 
@@ -129,6 +130,39 @@
               :max="10" 
               :format-tooltip="val => `${val/10000} / frame`"
             />
+          </el-form-item>
+
+          <el-divider content-position="left">背景音乐</el-divider>
+          <el-form-item label="BGM选择">
+            <el-select 
+              v-model="form.bgm_id" 
+              placeholder="选择背景音乐（可选）"
+              clearable
+              filterable
+              style="width: 100%"
+            >
+              <el-option
+                v-for="bgm in bgmList"
+                :key="bgm.id"
+                :label="`${bgm.name} (${formatDuration(bgm.duration)})`"
+                :value="bgm.id"
+              />
+            </el-select>
+            <span class="form-tip">为视频添加背景音乐，将与原音频混合</span>
+          </el-form-item>
+
+          <el-divider content-position="left">视频速度</el-divider>
+          <el-form-item label="播放速度">
+            <el-slider 
+              v-model="form.gen_setting.video_speed" 
+              :min="0.5" 
+              :max="2.0" 
+              :step="0.1"
+              :marks="{ 0.5: '0.5x', 1.0: '1.0x', 1.5: '1.5x', 2.0: '2.0x' }"
+              :format-tooltip="val => `${val}x`"
+              style="margin: 0 12px"
+            />
+            <span class="form-tip">调整视频播放速度，音调会自动保持</span>
           </el-form-item>
         </el-collapse-item>
       </el-collapse>
@@ -151,6 +185,7 @@ import { ref, reactive, watch, computed, onMounted } from 'vue'
 import { useVideoTasks } from '@/composables/useVideoTasks'
 import { chaptersService } from '@/services/chapters'
 import { apiKeysService } from '@/services/apiKeys'
+import bgmService from '@/services/bgm'
 import { ElMessage } from 'element-plus'
 
 const props = defineProps({
@@ -168,6 +203,7 @@ const submitting = ref(false)
 const chapterLoading = ref(false)
 const chapters = ref([])
 const apiKeys = ref([])
+const bgmList = ref([])
 const activeCollapse = ref([])
 const enableZoom = ref(true)
 const zoomSpeedDisplay = ref(5) // 对应 0.0005
@@ -175,6 +211,7 @@ const zoomSpeedDisplay = ref(5) // 对应 0.0005
 const form = reactive({
   chapter_id: '',
   api_key_id: '',
+  bgm_id: '',
   gen_setting: {
     resolution: '1080x1920',
     fps: 30,
@@ -182,6 +219,7 @@ const form = reactive({
     audio_codec: 'aac',
     audio_bitrate: '192k',
     zoom_speed: 0.0005,
+    video_speed: 1.0,
     llm_model: 'gpt-4o-mini',
     subtitle_style: {
       font: 'Arial',
@@ -218,6 +256,10 @@ const loadData = async () => {
     // 加载API密钥
     const keysRes = await apiKeysService.getAPIKeys({ size: 100, status: 'active' })
     apiKeys.value = keysRes.api_keys || []
+    
+    // 加载BGM列表
+    const bgmRes = await bgmService.getBGMs({ size: 100 })
+    bgmList.value = bgmRes.bgms || []
     
     // 初始加载章节（materials_prepared状态）
     await searchChapters('')
@@ -263,6 +305,7 @@ const submitForm = async () => {
         await createTask({
           chapter_id: form.chapter_id,
           api_key_id: form.api_key_id || null,
+          bgm_id: form.bgm_id || null,
           gen_setting: form.gen_setting
         })
         emit('success')
