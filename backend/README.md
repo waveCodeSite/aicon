@@ -384,6 +384,12 @@ docker run -d --name aicg-backend \
    - 验证存储桶权限
    - 确认文件大小限制
 
+### 测试单个文件生成
+```
+uv run scripts/test_single_sentence_video.py --sentence-id 94673ecc-abe0-42ea-ae19-9d4a8bb95cc0 --api-key-id 6861e67b-6731-4dca-b215-aade208b627f
+```
+
+
 ### 日志查看
 
 ```bash

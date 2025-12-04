@@ -254,6 +254,143 @@ class SubtitleService:
 
         return [line1, line2] if line2 else [line1]
 
+    def _add_subtitle_filter(
+            self,
+            filters: list,
+            words: list,
+            font_size: int,
+            color: str,
+            base_y_pos: int,
+            max_line_chars: int,
+            video_height: int
+    ) -> None:
+        """
+        添加字幕滤镜，支持双行显示
+        
+        Args:
+            filters: 滤镜列表
+            words: 词列表，每个词包含 text, start, end
+            font_size: 字体大小
+            color: 字体颜色
+            base_y_pos: 基准Y坐标
+            max_line_chars: 每行最大字符数
+            video_height: 视频高度
+        """
+        if not words:
+            return
+            
+        # 合并所有词的文本
+        full_text = "".join([w["text"] for w in words])
+        start_time = words[0]["start"]
+        end_time = words[-1]["end"]
+        
+        # 计算总字符数
+        total_len = len(full_text)
+        
+        # 如果文本长度不超过单行最大长度，显示单行
+        if total_len <= max_line_chars:
+            text_escaped = full_text.replace("'", "'\\\\\\''").replace(":", "\\:")
+            filter_str = (
+                f"drawtext="
+                f"text='{text_escaped}':"
+                f"fontsize={font_size}:"
+                f"fontcolor={color}:"
+                f"borderw=5:"
+                f"bordercolor=black:"
+                f"shadowcolor=black@0.7:"
+                f"shadowx=4:"
+                f"shadowy=4:"
+                f"box=1:"
+                f"boxcolor=black@0.65:"
+                f"boxborderw=20:"
+                f"x=(w-text_w)/2:"
+                f"y={base_y_pos}:"
+                f"enable='between(t,{start_time:.3f},{end_time:.3f})'"
+            )
+            filters.append(filter_str)
+        else:
+            # 文本过长，分成两行显示
+            # 智能分割：尽量在中间位置分割
+            mid_point = total_len // 2
+            
+            # 在中间点附近找最佳分割位置（优先在词边界）
+            best_split = mid_point
+            current_len = 0
+            for i, word in enumerate(words):
+                word_len = len(word["text"])
+                if current_len + word_len >= mid_point:
+                    # 检查是在当前词之前还是之后分割更合适
+                    if abs(current_len - mid_point) < abs(current_len + word_len - mid_point):
+                        best_split = current_len
+                        split_index = i
+                    else:
+                        best_split = current_len + word_len
+                        split_index = i + 1
+                    break
+                current_len += word_len
+            else:
+                split_index = len(words) // 2
+                best_split = sum(len(w["text"]) for w in words[:split_index])
+            
+            # 分割文本
+            line1_text = "".join([w["text"] for w in words[:split_index]])
+            line2_text = "".join([w["text"] for w in words[split_index:]])
+            
+            # 确保每行不超过最大长度
+            if len(line1_text) > max_line_chars:
+                line1_text = line1_text[:max_line_chars]
+            if len(line2_text) > max_line_chars:
+                line2_text = line2_text[:max_line_chars]
+            
+            # 计算行间距（字体大小的1.2倍）
+            line_spacing = int(font_size * 1.2)
+            
+            # 计算两行的Y坐标（使第一行在base_y_pos上方，第二行在下方）
+            line1_y = base_y_pos - line_spacing // 2
+            line2_y = base_y_pos + line_spacing // 2
+            
+            # 添加第一行字幕
+            text1_escaped = line1_text.replace("'", "'\\\\\\''").replace(":", "\\:")
+            filter_str1 = (
+                f"drawtext="
+                f"text='{text1_escaped}':"
+                f"fontsize={font_size}:"
+                f"fontcolor={color}:"
+                f"borderw=5:"
+                f"bordercolor=black:"
+                f"shadowcolor=black@0.7:"
+                f"shadowx=4:"
+                f"shadowy=4:"
+                f"box=1:"
+                f"boxcolor=black@0.65:"
+                f"boxborderw=20:"
+                f"x=(w-text_w)/2:"
+                f"y={line1_y}:"
+                f"enable='between(t,{start_time:.3f},{end_time:.3f})'"
+            )
+            filters.append(filter_str1)
+            
+            # 添加第二行字幕
+            text2_escaped = line2_text.replace("'", "'\\\\\\''").replace(":", "\\:")
+            filter_str2 = (
+                f"drawtext="
+                f"text='{text2_escaped}':"
+                f"fontsize={font_size}:"
+                f"fontcolor={color}:"
+                f"borderw=5:"
+                f"bordercolor=black:"
+                f"shadowcolor=black@0.7:"
+                f"shadowx=4:"
+                f"shadowy=4:"
+                f"box=1:"
+                f"boxcolor=black@0.65:"
+                f"boxborderw=20:"
+                f"x=(w-text_w)/2:"
+                f"y={line2_y}:"
+                f"enable='between(t,{start_time:.3f},{end_time:.3f})'"
+            )
+            filters.append(filter_str2)
+
     def create_subtitle_filter(
             self,
             subtitle_data: dict,
@@ -309,6 +446,7 @@ class SubtitleService:
                     # 使用词级时间轴构建字幕行
                     current_line_words = []
                     current_line_len = 0
+                    max_line_chars = 15  # 每行最大字符数
 
                     for w in words:
                         raw_word = w.get("word", "")
@@ -321,69 +459,24 @@ class SubtitleService:
                         if not clean_word:
                             # 即使是纯标点，如果它标志着句子结束，也可能触发换行
                             if has_punctuation and current_line_words:
-                                # 输出当前行
-                                line_text = "".join([x["text"] for x in current_line_words])
-                                start_time = current_line_words[0]["start"]
-                                end_time = current_line_words[-1]["end"]  # 使用上一个词的结束时间
-
-                                text_escaped = line_text.replace("'", "'\\\\\\''").replace(":", "\\:")
-
-                                filter_str = (
-                                    f"drawtext="
-                                    f"text='{text_escaped}':"
-                                    f"fontsize={font_size}:"
-                                    f"fontcolor={color}:"
-                                    f"borderw=5:"
-                                    f"bordercolor=black:"
-                                    f"shadowcolor=black@0.7:"
-                                    f"shadowx=4:"
-                                    f"shadowy=4:"
-                                    f"box=1:"
-                                    f"boxcolor=black@0.65:"
-                                    f"boxborderw=20:"
-                                    f"x=(w-text_w)/2:"
-                                    f"y={fixed_y_pos}:"
-                                    f"enable='between(t,{start_time:.3f},{end_time:.3f})'"
+                                # 输出当前累积的字幕（可能是双行）
+                                self._add_subtitle_filter(
+                                    filters, current_line_words, font_size, color, 
+                                    fixed_y_pos, max_line_chars, height
                                 )
-                                filters.append(filter_str)
-
                                 current_line_words = []
                                 current_line_len = 0
                             continue
 
                         word_len = len(clean_word)
 
-                        # 换行条件：
-                        # 1. 加上当前词超过最大长度（18字）
-                        # 2. 或者前一个词带有标点（已在上一轮循环处理，但这里作为双重保障）
-                        # 注意：这里主要处理长度限制，标点断句在下面处理
-                        if current_line_len + word_len > 18 and current_line_words:
-                            # 输出当前行
-                            line_text = "".join([x["text"] for x in current_line_words])
-                            start_time = current_line_words[0]["start"]
-                            end_time = current_line_words[-1]["end"]
-
-                            text_escaped = line_text.replace("'", "'\\\\\\''").replace(":", "\\:")
-
-                            filter_str = (
-                                f"drawtext="
-                                f"text='{text_escaped}':"
-                                f"fontsize={font_size}:"
-                                f"fontcolor={color}:"
-                                f"borderw=5:"
-                                f"bordercolor=black:"
-                                f"shadowcolor=black@0.7:"
-                                f"shadowx=4:"
-                                f"shadowy=4:"
-                                f"box=1:"
-                                f"boxcolor=black@0.65:"
-                                f"boxborderw=20:"
-                                f"x=(w-text_w)/2:"
-                                f"y={fixed_y_pos}:"
-                                f"enable='between(t,{start_time:.3f},{end_time:.3f})'"
+                        # 换行条件：加上当前词超过双行最大长度（30字）
+                        if current_line_len + word_len > max_line_chars * 2 and current_line_words:
+                            # 输出当前累积的字幕（可能是双行）
+                            self._add_subtitle_filter(
+                                filters, current_line_words, font_size, color, 
+                                fixed_y_pos, max_line_chars, height
                             )
-                            filters.append(filter_str)
-
                             current_line_words = []
                             current_line_len = 0
 
@@ -397,60 +490,19 @@ class SubtitleService:
 
                         # 如果当前词带有标点，且当前行不为空，则强制换行（小句结束）
                         if has_punctuation and current_line_words:
-                            line_text = "".join([x["text"] for x in current_line_words])
-                            start_time = current_line_words[0]["start"]
-                            end_time = current_line_words[-1]["end"]
-
-                            text_escaped = line_text.replace("'", "'\\\\\\''").replace(":", "\\:")
-
-                            filter_str = (
-                                f"drawtext="
-                                f"text='{text_escaped}':"
-                                f"fontsize={font_size}:"
-                                f"fontcolor={color}:"
-                                f"borderw=5:"
-                                f"bordercolor=black:"
-                                f"shadowcolor=black@0.7:"
-                                f"shadowx=4:"
-                                f"shadowy=4:"
-                                f"box=1:"
-                                f"boxcolor=black@0.65:"
-                                f"boxborderw=20:"
-                                f"x=(w-text_w)/2:"
-                                f"y={fixed_y_pos}:"
-                                f"enable='between(t,{start_time:.3f},{end_time:.3f})'"
+                            self._add_subtitle_filter(
+                                filters, current_line_words, font_size, color, 
+                                fixed_y_pos, max_line_chars, height
                             )
-                            filters.append(filter_str)
-
                             current_line_words = []
                             current_line_len = 0
 
                     # 处理最后一行
                     if current_line_words:
-                        line_text = "".join([x["text"] for x in current_line_words])
-                        start_time = current_line_words[0]["start"]
-                        end_time = current_line_words[-1]["end"]
-
-                        text_escaped = line_text.replace("'", "'\\\\\\''").replace(":", "\\:")
-
-                        filter_str = (
-                            f"drawtext="
-                            f"text='{text_escaped}':"
-                            f"fontsize={font_size}:"
-                            f"fontcolor={color}:"
-                            f"borderw=5:"
-                            f"bordercolor=black:"
-                            f"shadowcolor=black@0.7:"
-                            f"shadowx=4:"
-                            f"shadowy=4:"
-                            f"box=1:"
-                            f"boxcolor=black@0.65:"
-                            f"boxborderw=20:"
-                            f"x=(w-text_w)/2:"
-                            f"y={fixed_y_pos}:"
-                            f"enable='between(t,{start_time:.3f},{end_time:.3f})'"
+                        self._add_subtitle_filter(
+                            filters, current_line_words, font_size, color, 
+                            fixed_y_pos, max_line_chars, height
                         )
-                        filters.append(filter_str)
 
                 else:
                     # 没有词级时间轴，使用比例计算时间（回退方案）
