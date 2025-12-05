@@ -1,0 +1,202 @@
+version: '3.8'
+
+# AICG平台生产环境 Docker Compose 配置
+# 包含完整的前后端应用和基础设施服务
+
+services:
+  # ============================================
+  # 基础设施服务
+  # ============================================
+
+  # PostgreSQL 数据库
+  postgres:
+    image: postgres:15-alpine
+    container_name: aicg-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-aicg_platform}
+      POSTGRES_USER: ${POSTGRES_USER:-aicg_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-aicg_password}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    networks:
+      - aicg-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-aicg_user} -d ${POSTGRES_DB:-aicg_platform}"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Redis 缓存和消息队列
+  redis:
+    image: redis:7-alpine
+    container_name: aicg-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redis_password}
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - aicg-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-redis_password}", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # MinIO 对象存储
+  minio:
+    image: minio/minio:latest
+    container_name: aicg-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin123}
+    ports:
+      - "9000:9000"  # API
+      - "9001:9001"  # Console
+    volumes:
+      - minio_data:/data
+    networks:
+      - aicg-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # ============================================
+  # 应用服务
+  # ============================================
+
+  # 后端 API 服务
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: aicg-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    environment:
+      # 数据库配置
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-aicg_user}:${POSTGRES_PASSWORD:-aicg_password}@postgres:5432/${POSTGRES_DB:-aicg_platform}
+      DATABASE_URL_SYNC: postgresql://${POSTGRES_USER:-aicg_user}:${POSTGRES_PASSWORD:-aicg_password}@postgres:5432/${POSTGRES_DB:-aicg_platform}
+      # Redis 配置
+      REDIS_URL: redis://:${REDIS_PASSWORD:-redis_password}@redis:6379/0
+      CELERY_BROKER_URL: redis://:${REDIS_PASSWORD:-redis_password}@redis:6379/0
+      CELERY_RESULT_BACKEND: redis://:${REDIS_PASSWORD:-redis_password}@redis:6379/0
+      # MinIO 配置
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin123}
+      MINIO_BUCKET_NAME: ${MINIO_BUCKET_NAME:-aicg-platform}
+      # 应用配置
+      ENVIRONMENT: ${ENVIRONMENT:-production}
+      DEBUG: ${DEBUG:-false}
+      API_V1_PREFIX: /api/v1
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      # 安全配置
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-your-super-secret-jwt-key-change-in-production}
+      API_KEY_ENCRYPTION_KEY: ${API_KEY_ENCRYPTION_KEY:-E2zTzjYpK0cGf3Sq0Y1BVxYI7HzlUv8P4Q6cTg19J0A=}
+      ALLOWED_HOSTS: '["*"]'
+    ports:
+      - "8000:8000"
+    volumes:
+      - backend_logs:/app/logs
+    networks:
+      - aicg-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # Celery Worker - 异步任务处理
+  celery-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: aicg-celery-worker
+    restart: unless-stopped
+    command: celery -A src.tasks worker -l info -c 2
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      # 数据库配置
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-aicg_user}:${POSTGRES_PASSWORD:-aicg_password}@postgres:5432/${POSTGRES_DB:-aicg_platform}
+      DATABASE_URL_SYNC: postgresql://${POSTGRES_USER:-aicg_user}:${POSTGRES_PASSWORD:-aicg_password}@postgres:5432/${POSTGRES_DB:-aicg_platform}
+      # Redis 配置
+      REDIS_URL: redis://:${REDIS_PASSWORD:-redis_password}@redis:6379/0
+      CELERY_BROKER_URL: redis://:${REDIS_PASSWORD:-redis_password}@redis:6379/0
+      CELERY_RESULT_BACKEND: redis://:${REDIS_PASSWORD:-redis_password}@redis:6379/0
+      # MinIO 配置
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin123}
+      MINIO_BUCKET_NAME: ${MINIO_BUCKET_NAME:-aicg-platform}
+      # 应用配置
+      ENVIRONMENT: ${ENVIRONMENT:-production}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    volumes:
+      - backend_logs:/app/logs
+    networks:
+      - aicg-network
+
+  # 前端服务
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: /api/v1
+    container_name: aicg-frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "80:80"
+    networks:
+      - aicg-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+# ============================================
+# 网络配置
+# ============================================
+networks:
+  aicg-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 192.168.222.0/24
+
+# ============================================
+# 数据卷配置
+# ============================================
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  minio_data:
+    driver: local
+  backend_logs:
+    driver: local
