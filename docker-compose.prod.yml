@@ -14,9 +14,9 @@ services:
     container_name: aicg-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-aicg_platform}
-      POSTGRES_USER: ${POSTGRES_USER:-aicg_user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-aicg_password}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
     ports:
       - "5432:5432"
@@ -26,7 +26,7 @@ services:
     networks:
       - aicg-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-aicg_user} -d ${POSTGRES_DB:-aicg_platform}"]
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -36,7 +36,7 @@ services:
     image: redis:7-alpine
     container_name: aicg-redis
     restart: unless-stopped
-    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redis_password}
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
     ports:
       - "6379:6379"
     volumes:
@@ -44,7 +44,7 @@ services:
     networks:
       - aicg-network
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-redis_password}", "ping"]
+      test: ["CMD-SHELL", "redis-cli -a $$REDIS_PASSWORD ping"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -56,8 +56,8 @@ services:
     restart: unless-stopped
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin123}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
     ports:
       - "9000:9000"  # API
       - "9001:9001"  # Console
@@ -91,25 +91,25 @@ services:
         condition: service_healthy
     environment:
       # 数据库配置
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-aicg_user}:${POSTGRES_PASSWORD:-aicg_password}@postgres:5432/${POSTGRES_DB:-aicg_platform}
-      DATABASE_URL_SYNC: postgresql://${POSTGRES_USER:-aicg_user}:${POSTGRES_PASSWORD:-aicg_password}@postgres:5432/${POSTGRES_DB:-aicg_platform}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      DATABASE_URL_SYNC: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       # Redis 配置
-      REDIS_URL: redis://:${REDIS_PASSWORD:-redis_password}@redis:6379/0
-      CELERY_BROKER_URL: redis://:${REDIS_PASSWORD:-redis_password}@redis:6379/0
-      CELERY_RESULT_BACKEND: redis://:${REDIS_PASSWORD:-redis_password}@redis:6379/0
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      CELERY_BROKER_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      CELERY_RESULT_BACKEND: redis://:${REDIS_PASSWORD}@redis:6379/0
       # MinIO 配置
       MINIO_ENDPOINT: minio:9000
-      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
-      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin123}
-      MINIO_BUCKET_NAME: ${MINIO_BUCKET_NAME:-aicg-platform}
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+      MINIO_BUCKET_NAME: ${MINIO_BUCKET_NAME}
       # 应用配置
       ENVIRONMENT: ${ENVIRONMENT:-production}
       DEBUG: ${DEBUG:-false}
       API_V1_PREFIX: /api/v1
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       # 安全配置
-      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-your-super-secret-jwt-key-change-in-production}
-      API_KEY_ENCRYPTION_KEY: ${API_KEY_ENCRYPTION_KEY:-E2zTzjYpK0cGf3Sq0Y1BVxYI7HzlUv8P4Q6cTg19J0A=}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+      API_KEY_ENCRYPTION_KEY: ${API_KEY_ENCRYPTION_KEY}
       ALLOWED_HOSTS: '["*"]'
     ports:
       - "8000:8000"
@@ -137,17 +137,17 @@ services:
         condition: service_healthy
     environment:
       # 数据库配置
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-aicg_user}:${POSTGRES_PASSWORD:-aicg_password}@postgres:5432/${POSTGRES_DB:-aicg_platform}
-      DATABASE_URL_SYNC: postgresql://${POSTGRES_USER:-aicg_user}:${POSTGRES_PASSWORD:-aicg_password}@postgres:5432/${POSTGRES_DB:-aicg_platform}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      DATABASE_URL_SYNC: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       # Redis 配置
-      REDIS_URL: redis://:${REDIS_PASSWORD:-redis_password}@redis:6379/0
-      CELERY_BROKER_URL: redis://:${REDIS_PASSWORD:-redis_password}@redis:6379/0
-      CELERY_RESULT_BACKEND: redis://:${REDIS_PASSWORD:-redis_password}@redis:6379/0
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      CELERY_BROKER_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      CELERY_RESULT_BACKEND: redis://:${REDIS_PASSWORD}@redis:6379/0
       # MinIO 配置
       MINIO_ENDPOINT: minio:9000
-      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
-      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin123}
-      MINIO_BUCKET_NAME: ${MINIO_BUCKET_NAME:-aicg-platform}
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+      MINIO_BUCKET_NAME: ${MINIO_BUCKET_NAME}
       # 应用配置
       ENVIRONMENT: ${ENVIRONMENT:-production}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
