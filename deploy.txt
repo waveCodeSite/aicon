@@ -1,0 +1,49 @@
+后端
+
+  - backend/Dockerfile - 多阶段构建，使用 uv 包管理器
+  - backend/.dockerignore - 构建时排除不必要文件
+
+  前端
+
+  - frontend/Dockerfile - Node 构建 + Nginx 生产镜像
+  - frontend/nginx.conf - API 反向代理 + 静态资源服务
+  - frontend/.dockerignore - 构建时排除 node_modules 等
+
+  配置
+
+  - docker-compose.prod.yml - 完整生产环境配置
+  - .env.prod.example - 生产环境变量模板
+
+  脚本
+
+  - scripts/deploy.sh - 部署管理脚本
+
+  ---
+  部署步骤
+
+  # 1. 配置环境变量
+  cp .env.prod.example .env.prod
+  # 编辑 .env.prod，修改密码和密钥
+
+  # 2. 构建并启动
+  ./scripts/deploy.sh build
+  ./scripts/deploy.sh start
+
+  # 3. 运行数据库迁移
+  ./scripts/deploy.sh migrate
+
+  # 4. 查看状态
+  ./scripts/deploy.sh status
+
+  # 其他命令
+  ./scripts/deploy.sh logs          # 查看日志
+  ./scripts/deploy.sh logs backend  # 查看后端日志
+  ./scripts/deploy.sh stop          # 停止服务
+  ./scripts/deploy.sh restart       # 重启服务
+
+  访问地址
+
+  - 前端: http://localhost
+  - API: http://localhost:8000
+  - API文档: http://localhost:8000/docs
+  - MinIO: http://localhost:9001

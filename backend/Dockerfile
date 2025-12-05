@@ -14,11 +14,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # 安装 uv 包管理器
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
 
-# 复制依赖文件
-COPY pyproject.toml uv.lock ./
+# 复制依赖文件和构建所需文件
+COPY pyproject.toml uv.lock README.md ./
 
-# 安装依赖到虚拟环境
-RUN uv sync --frozen --no-dev
+# 安装依赖（仅安装，不构建 editable）
+RUN uv sync --frozen --no-dev --no-editable
 
 # ============================================
 # 生产镜像
