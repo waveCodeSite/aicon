@@ -76,6 +76,7 @@ class UserResponse(UUIDMixin):
     avatar_url: Optional[str]
     is_active: bool
     is_verified: bool
+    is_admin: bool = False
     preferences: Optional[Dict[str, Any]]
     timezone: str
     language: str
@@ -109,6 +110,7 @@ class UserResponse(UUIDMixin):
             avatar_url=user.avatar_url,
             is_active=user.is_active,
             is_verified=user.is_verified,
+            is_admin=getattr(user, 'is_admin', False),
             preferences=preferences,
             timezone=getattr(user, 'timezone', 'Asia/Shanghai'),
             language=getattr(user, 'language', 'zh-CN'),

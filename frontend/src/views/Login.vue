@@ -54,26 +54,39 @@
 
     <!-- 底部链接 -->
     <div class="form-footer">
-      <p>还没有账户？
-        <router-link to="/register" class="link">
-          立即注册
-        </router-link>
-      </p>
+      <div class="registerBtn" v-if="allowRegistration">
+        <p>还没有账户？
+          <router-link to="/register" class="link">
+            立即注册
+          </router-link>
+        </p>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { User, Lock } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
+import api from '@/services/api.js'
 
 const router = useRouter()
 const authStore = useAuthStore()
 
 const loginFormRef = ref()
+const allowRegistration = ref(false)
+
+onMounted(async () => {
+  try {
+    const data = await api.get('/auth/registration-status')
+    allowRegistration.value = data.allow_registration
+  } catch {
+    // 默认不允许注册
+  }
+})
 
 const loginForm = reactive({
   username: '',

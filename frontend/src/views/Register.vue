@@ -1,12 +1,29 @@
 <template>
   <div class="register-form">
+    <!-- 注册已关闭提示 -->
+    <template v-if="!allowRegistration">
+      <div class="form-header">
+        <el-icon class="header-icon disabled"><Warning /></el-icon>
+        <h2>注册已关闭</h2>
+      </div>
+      <el-alert type="warning" :closable="false" show-icon>
+        系统暂不开放注册，请联系管理员。
+      </el-alert>
+      <div class="form-footer">
+        <p>已有账户？
+          <router-link to="/login" class="link">立即登录</router-link>
+        </p>
+      </div>
+    </template>
+
+    <!-- 注册表单 -->
+    <template v-else>
     <!-- 表单标题 -->
     <div class="form-header">
       <el-icon class="header-icon"><User /></el-icon>
       <h2>创建账户</h2>
     </div>
 
-    <!-- 注册表单 -->
     <el-form
       ref="registerFormRef"
       :model="registerForm"
@@ -80,20 +97,32 @@
         </router-link>
       </p>
     </div>
+    </template>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { User, Lock, Message } from '@element-plus/icons-vue'
+import { User, Lock, Message, Warning } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
+import api from '@/services/api'
 
 const router = useRouter()
 const authStore = useAuthStore()
 
+const allowRegistration = ref(true)
 const registerFormRef = ref()
+
+onMounted(async () => {
+  try {
+    const data = await api.get('/auth/registration-status')
+    allowRegistration.value = data.allow_registration
+  } catch {
+    // 默认允许注册
+  }
+})
 
 const registerForm = reactive({
   username: '',
@@ -177,6 +206,11 @@ const handleRegister = async () => {
   background: rgba(99, 102, 241, 0.1);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
+}
+
+.header-icon.disabled {
+  color: var(--warning-color, #e6a23c);
+  background: rgba(230, 162, 60, 0.1);
 }
 
 .form-header h2 {

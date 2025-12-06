@@ -224,15 +224,15 @@ const loadAPIKeys = async () => {
       page: currentPage.value,
       size: pageSize.value
     }
-    
+
     if (filterProvider.value) {
       params.provider = filterProvider.value
     }
-    
+
     if (filterStatus.value) {
       params.key_status = filterStatus.value
     }
-    
+
     const response = await apiKeysService.getAPIKeys(params)
     apiKeys.value = response.api_keys || []
     total.value = response.total || 0
@@ -256,7 +256,7 @@ const showAddDialog = () => {
     status: 'active'
   })
   dialogVisible.value = true
-  
+
   // 重置表单验证
   if (formRef.value) {
     formRef.value.clearValidate()
@@ -274,7 +274,7 @@ const showEditDialog = (row) => {
     status: row.status
   })
   dialogVisible.value = true
-  
+
   // 重置表单验证
   if (formRef.value) {
     formRef.value.clearValidate()
@@ -284,13 +284,13 @@ const showEditDialog = (row) => {
 // 提交表单
 const handleSubmit = async () => {
   if (!formRef.value) return
-  
+
   try {
     await formRef.value.validate()
   } catch (error) {
     return
   }
-  
+
   submitting.value = true
   try {
     if (isEdit.value) {
@@ -313,7 +313,7 @@ const handleSubmit = async () => {
       await apiKeysService.createAPIKey(createData)
       ElMessage.success('API密钥添加成功')
     }
-    
+
     dialogVisible.value = false
     await loadAPIKeys()
   } catch (error) {
@@ -336,7 +336,7 @@ const handleDelete = async (row) => {
         cancelButtonText: '取消'
       }
     )
-    
+
     await apiKeysService.deleteAPIKey(row.id)
     ElMessage.success('API密钥删除成功')
     await loadAPIKeys()

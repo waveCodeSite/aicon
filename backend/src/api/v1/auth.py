@@ -18,6 +18,7 @@ from src.core.security import (
     TokenError
 )
 from src.models.user import User
+from src.models.system_setting import SystemSetting
 from src.api.schemas.auth import (
     UserRegister,
     UserResponse,
@@ -72,6 +73,17 @@ async def register(
     db: AsyncSession = Depends(get_db)
 ) -> Any:
     """用户注册"""
+    # 检查是否允许注册
+    result = await db.execute(
+        select(SystemSetting).where(SystemSetting.key == 'allow_registration')
+    )
+    setting = result.scalar_one_or_none()
+    if setting and setting.value and setting.value.lower() != 'true':
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="注册功能已关闭"
+        )
+
     # 检查用户名是否已存在
     result = await db.execute(
         select(User).filter(
@@ -174,6 +186,21 @@ async def verify_current_token(
         "user_id": str(current_user.id),
         "username": current_user.username
     }
+
+
+@router.get("/registration-status")
+async def get_registration_status(
+    db: AsyncSession = Depends(get_db)
+) -> Any:
+    """获取注册功能状态（公开接口）"""
+    result = await db.execute(
+        select(SystemSetting).where(SystemSetting.key == 'allow_registration')
+    )
+    setting = result.scalar_one_or_none()
+    allow = True
+    if setting and setting.value:
+        allow = setting.value.lower() == 'true'
+    return {"allow_registration": allow}
 
 
 __all__ = [

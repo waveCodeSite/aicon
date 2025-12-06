@@ -35,6 +35,12 @@ export function setupAuthGuard(router) {
       return
     }
 
+    // 检查管理员权限
+    if (to.meta.requiresAdmin && authStore.user && !authStore.user.is_admin) {
+      next({ name: 'Dashboard' })
+      return
+    }
+
     next()
   })
 

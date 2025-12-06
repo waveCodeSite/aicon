@@ -22,6 +22,7 @@ class User(BaseModel):
     # 状态和权限
     is_active = Column(Boolean, default=True, nullable=False, comment="是否激活")
     is_verified = Column(Boolean, default=False, nullable=False, comment="是否已验证")
+    is_admin = Column(Boolean, default=False, nullable=False, comment="是否管理员")
     last_login = Column(DateTime(timezone=True), nullable=True, comment="最后登录时间")
 
     # 设置和偏好

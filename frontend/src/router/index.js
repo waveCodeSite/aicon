@@ -178,6 +178,19 @@ const routes = [
         component: Settings
       }
     ]
+  },
+  {
+    path: '/admin',
+    name: 'Admin',
+    component: MainLayout,
+    meta: { requiresAuth: true, requiresAdmin: true },
+    children: [
+      {
+        path: 'users',
+        name: 'UserManagement',
+        component: () => import('@/views/admin/UserManagement.vue')
+      }
+    ]
   }
 ]
 

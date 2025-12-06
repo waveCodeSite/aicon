@@ -84,7 +84,8 @@ import {
   Promotion,
   Setting,
   Key,
-  Headset
+  Headset,
+  UserFilled
 } from '@element-plus/icons-vue'
 
 // Props
@@ -104,8 +105,8 @@ const authStore = useAuthStore()
 // 计算属性
 const user = computed(() => authStore.user)
 
-// 菜单项配置
-const menuItems = [
+// 基础菜单项配置
+const baseMenuItems = [
   {
     title: '控制台',
     path: '/dashboard',
@@ -149,6 +150,24 @@ const menuItems = [
     badge: null
   }
 ]
+
+// 管理员菜单项
+const adminMenuItems = [
+  {
+    title: '用户管理',
+    path: '/admin/users',
+    icon: UserFilled,
+    badge: null
+  }
+]
+
+// 根据用户权限计算菜单项
+const menuItems = computed(() => {
+  if (user.value?.is_admin) {
+    return [...baseMenuItems, ...adminMenuItems]
+  }
+  return baseMenuItems
+})
 
 // 检查当前路径是否激活
 const isActive = (path) => {
