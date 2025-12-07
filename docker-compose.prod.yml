@@ -131,7 +131,7 @@ services:
       dockerfile: Dockerfile
     container_name: aicg-celery-worker
     restart: unless-stopped
-    command: celery -A src.tasks worker -l info -c 1
+    command: celery -A src.tasks worker -l info -c 2
     depends_on:
       backend:
         condition: service_healthy
@@ -160,10 +160,6 @@ services:
       - backend_logs:/app/logs
     networks:
       - aicg-network
-    deploy:
-      resources:
-        limits:
-          memory: 8G
 
   # 前端服务
   frontend:

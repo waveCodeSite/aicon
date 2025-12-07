@@ -284,7 +284,9 @@ def generate_audio(self, api_key_id: str, sentences_ids: list[str], voice: str =
     autoretry_for=(Exception,),
     retry_backoff=True,
     retry_jitter=True,
-    name="generate.synthesize_video"
+    name="generate.synthesize_video",
+    time_limit=3600,  # 1小时硬超时
+    soft_time_limit=3300  # 55分钟软超时
 )
 def synthesize_video(self, video_task_id: str):
     """
