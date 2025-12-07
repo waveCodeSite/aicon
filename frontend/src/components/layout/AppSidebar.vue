@@ -158,6 +158,12 @@ const adminMenuItems = [
     path: '/admin/users',
     icon: UserFilled,
     badge: null
+  },
+  {
+    title: '存储配置',
+    path: '/admin/storage',
+    icon: Folder,
+    badge: null
   }
 ]
 

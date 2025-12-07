@@ -151,6 +151,8 @@ services:
       # 应用配置
       ENVIRONMENT: ${ENVIRONMENT:-production}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      # 加密配置
+      API_KEY_ENCRYPTION_KEY: ${API_KEY_ENCRYPTION_KEY}
     volumes:
       - backend_logs:/app/logs
     networks:

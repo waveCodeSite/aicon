@@ -115,9 +115,8 @@ export const upload = (url, data, config = {}) => {
   }
 
   const uploadConfig = {
-    headers: {
-      'Content-Type': 'multipart/form-data',
-    },
+    timeout: 5 * 60 * 1000, // 大文件上传超时5分钟
+    headers: { 'Content-Type': 'multipart/form-data' },
     onUploadProgress: config.onUploadProgress,
     ...config
   }

@@ -189,6 +189,11 @@ const routes = [
         path: 'users',
         name: 'UserManagement',
         component: () => import('@/views/admin/UserManagement.vue')
+      },
+      {
+        path: 'storage',
+        name: 'StorageSettings',
+        component: () => import('@/views/admin/StorageSettings.vue')
       }
     ]
   }
