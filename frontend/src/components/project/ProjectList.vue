@@ -56,6 +56,7 @@
       v-else-if="viewMode === 'grid'"
       :projects="projects"
       @view-project="$emit('view-project', $event)"
+      @delete-project="$emit('delete-project', $event)"
     />
 
     <!-- 列表视图 -->
@@ -118,6 +119,7 @@ defineProps({
 // Emits定义
 const emit = defineEmits([
   'edit-project',
+  'delete-project',
   'archive-project',
   'view-project',
   'retry-project',

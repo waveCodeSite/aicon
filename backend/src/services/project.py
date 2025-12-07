@@ -325,7 +325,7 @@ class ProjectService(BaseService):
             owner_id: str
     ) -> bool:
         """
-        删除项目
+        删除项目及其所有关联的存储文件
 
         Args:
             project_id: 项目ID
@@ -334,8 +334,43 @@ class ProjectService(BaseService):
         Returns:
             是否删除成功
         """
+        from src.models import Chapter, Paragraph, Sentence
+        from src.utils.storage import get_storage_client
+
         project = await self.get_project_by_id(project_id, owner_id)
 
+        # 收集所有需要删除的文件
+        files_to_delete = []
+        if project.file_path:
+            files_to_delete.append(project.file_path)
+
+        # 查询所有关联的句子，收集图片和音频文件
+        stmt = (
+            select(Sentence)
+            .join(Paragraph, Sentence.paragraph_id == Paragraph.id)
+            .join(Chapter, Paragraph.chapter_id == Chapter.id)
+            .where(Chapter.project_id == project_id)
+        )
+        result = await self.execute(stmt)
+        sentences = result.scalars().all()
+
+        for sentence in sentences:
+            if sentence.image_url:
+                files_to_delete.append(sentence.image_url)
+            if sentence.audio_url:
+                files_to_delete.append(sentence.audio_url)
+
+        # 删除存储中的文件
+        if files_to_delete:
+            try:
+                storage_client = await get_storage_client()
+                for file_key in files_to_delete:
+                    await storage_client.delete_file(file_key)
+                logger.info(f"删除项目文件: {len(files_to_delete)} 个文件")
+            except Exception as e:
+                logger.warning(f"删除存储文件时出错: {e}")
+
+        # 删除数据库记录（级联删除章节、段落、句子）
         await self.delete(project)
         await self.commit()
 

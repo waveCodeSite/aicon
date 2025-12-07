@@ -105,13 +105,11 @@ async def process_sentence(
             )
 
             storage_result = await storage_client.upload_file(
-                user_id=user_id,
+                user_id=str(user_id),
                 file=upload_file,
                 metadata={
-                    "user_id": user_id,
                     "file_id": file_id,
                     "file_type": "audio/mpeg",
-                    "original_filename": f"{file_id}.mp3"
                 }
             )
             object_key = storage_result["object_key"]

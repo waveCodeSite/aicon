@@ -68,9 +68,9 @@ class BGMService(BaseService):
             content = await file.read()
             await file.seek(0)
 
-            # 上传到MinIO
+            # 上传到存储
             upload_result = await storage_client.upload_file(
-                user_id=user_id, file=file, object_key=file_key
+                user_id=str(user_id), file=file, object_key=file_key
             )
 
             # 使用返回的key
