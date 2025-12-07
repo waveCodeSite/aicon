@@ -131,7 +131,7 @@ services:
       dockerfile: Dockerfile
     container_name: aicg-celery-worker
     restart: unless-stopped
-    command: celery -A src.tasks worker -l info -c 2
+    command: celery -A src.tasks worker -l info -c 1
     depends_on:
       backend:
         condition: service_healthy
@@ -153,10 +153,17 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       # 加密配置
       API_KEY_ENCRYPTION_KEY: ${API_KEY_ENCRYPTION_KEY}
+      # HuggingFace 缓存目录
+      HF_HOME: /tmp/huggingface
+      TRANSFORMERS_CACHE: /tmp/huggingface
     volumes:
       - backend_logs:/app/logs
     networks:
       - aicg-network
+    deploy:
+      resources:
+        limits:
+          memory: 8G
 
   # 前端服务
   frontend:
