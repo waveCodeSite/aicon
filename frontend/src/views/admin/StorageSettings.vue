@@ -52,6 +52,7 @@
             <el-option label="腾讯云 COS" value="tencent" />
             <el-option label="华为云 OBS" value="huawei" />
             <el-option label="Cloudflare R2" value="cloudflare" />
+            <el-option label="其它 S3 兼容" value="s3" />
           </el-select>
         </el-form-item>
         <el-form-item label="端点" prop="endpoint">
@@ -129,7 +130,8 @@ const providerLabels = {
   aliyun: '阿里云',
   tencent: '腾讯云',
   huawei: '华为云',
-  cloudflare: 'R2'
+  cloudflare: 'R2',
+  s3: 'S3兼容'
 }
 
 const form = reactive({
