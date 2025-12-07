@@ -182,7 +182,11 @@ class SubtitleService:
             )
 
             # 解析响应
-            correction_result = json.loads(response.choices[0].message.content)
+            content = response.choices[0].message.content
+            if not content:
+                logger.warning("[LLM纠错] LLM返回空内容，使用原始字幕")
+                return subtitle_data
+            correction_result = json.loads(content)
             corrected_segments = correction_result.get("segments", [])
             
             if not corrected_segments:
@@ -324,6 +328,7 @@ class SubtitleService:
             text_escaped = full_text.replace("'", "'\\\\\\''").replace(":", "\\:")
             filter_str = (
                 f"drawtext="
+                f"fontfile=/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc:"
                 f"text='{text_escaped}':"
                 f"fontsize={font_size}:"
                 f"fontcolor={color}:"
@@ -385,6 +390,7 @@ class SubtitleService:
             text1_escaped = line1_text.replace("'", "'\\\\\\''").replace(":", "\\:")
             filter_str1 = (
                 f"drawtext="
+                f"fontfile=/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc:"
                 f"text='{text1_escaped}':"
                 f"fontsize={font_size}:"
                 f"fontcolor={color}:"
@@ -406,6 +412,7 @@ class SubtitleService:
             text2_escaped = line2_text.replace("'", "'\\\\\\''").replace(":", "\\:")
             filter_str2 = (
                 f"drawtext="
+                f"fontfile=/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc:"
                 f"text='{text2_escaped}':"
                 f"fontsize={font_size}:"
                 f"fontcolor={color}:"
