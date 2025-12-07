@@ -1,21 +1,44 @@
 import os
 import json
-from faster_whisper import WhisperModel
-from opencc import OpenCC
 from src.core.logging import get_logger
 
 logger = get_logger(__name__)
+
+# 设置 HuggingFace 缓存目录
+os.environ.setdefault("HF_HOME", "/tmp/huggingface")
+os.environ.setdefault("TRANSFORMERS_CACHE", "/tmp/huggingface")
 
 
 class WhisperTranscriptionService:
     def __init__(self, model_size="small", device="cpu", compute_type="float32"):
         """
-        初始化语音识别服务（可复用模型，不需要每次都加载）
+        初始化语音识别服务（延迟加载模型）
         """
-        logger.info(f"🔄 正在加载 Whisper 模型: {model_size} ...")
-        self.model = WhisperModel(model_size, device=device, compute_type=compute_type)
-        self.cc = OpenCC("t2s")  # 繁→简转换
-        logger.info(f"✅ 模型加载完成")
+        self._model = None
+        self._cc = None
+        self._model_size = model_size
+        self._device = device
+        self._compute_type = compute_type
+
+    def _ensure_model_loaded(self):
+        """确保模型已加载"""
+        if self._model is None:
+            from faster_whisper import WhisperModel
+            from opencc import OpenCC
+            logger.info(f"正在加载 Whisper 模型: {self._model_size} ...")
+            self._model = WhisperModel(self._model_size, device=self._device, compute_type=self._compute_type)
+            self._cc = OpenCC("t2s")
+            logger.info("模型加载完成")
+
+    @property
+    def model(self):
+        self._ensure_model_loaded()
+        return self._model
+
+    @property
+    def cc(self):
+        self._ensure_model_loaded()
+        return self._cc
 
     @staticmethod
     def format_timestamp(seconds: float):
