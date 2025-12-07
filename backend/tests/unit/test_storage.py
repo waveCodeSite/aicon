@@ -9,7 +9,7 @@ from pathlib import Path
 from unittest.mock import Mock, AsyncMock, patch
 from datetime import datetime, timedelta
 
-from src.utils.storage import MinIOStorage, StorageError
+from src.utils.storage import MinIOStorage, StorageError, StorageConfig
 from src.core.config import settings
 
 
@@ -19,12 +19,12 @@ class TestMinIOStorage:
     @pytest.fixture
     def storage_client(self):
         """创建存储客户端实例"""
-        with patch('src.utils.storage.Minio') as mock_minio:
+        with patch('src.utils.storage.boto3') as mock_boto3:
             mock_client = Mock()
-            mock_minio.return_value = mock_client
+            mock_boto3.client.return_value = mock_client
 
             storage = MinIOStorage()
-            storage.client = mock_client
+            storage._client = mock_client
             return storage, mock_client
 
     @pytest.fixture
@@ -331,8 +331,8 @@ class TestMinIOStorage:
     async def test_get_file_info_not_found(self, mock_get_storage):
         """测试获取不存在的文件信息"""
         mock_storage = AsyncMock()
-        from minio.error import S3Error
-        mock_storage.client.stat_object.side_effect = S3Error("Not found", "NoSuchKey", "")
+        from botocore.exceptions import ClientError
+        mock_storage.client.stat_object.side_effect = ClientError({"Error": {"Code": "404"}}, "HeadObject")
         mock_get_storage.return_value = mock_storage
 
         storage = MinIOStorage()
@@ -357,8 +357,8 @@ class TestMinIOStorage:
         assert await storage.file_exists("existing-file") is True
 
         # 文件不存在
-        from minio.error import S3Error
-        mock_storage.client.stat_object.side_effect = S3Error("Not found", "NoSuchKey", "")
+        from botocore.exceptions import ClientError
+        mock_storage.client.stat_object.side_effect = ClientError({"Error": {"Code": "404"}}, "HeadObject")
         assert await storage.file_exists("nonexistent-file") is False
 
     @patch('src.utils.storage.get_storage_client')

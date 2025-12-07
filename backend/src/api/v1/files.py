@@ -57,15 +57,13 @@ async def upload_file(
     # 获取存储客户端
     storage_client = await get_storage_client()
 
-    # 上传到MinIO
+    # 上传到存储
     storage_result = await storage_client.upload_file(
-        user_id=current_user.id,
+        user_id=str(current_user.id),
         file=file,
         metadata={
-            "user_id": current_user.id,
             "file_id": file_id,
             "file_type": file_type,
-            "original_filename": file.filename,
         }
     )
 

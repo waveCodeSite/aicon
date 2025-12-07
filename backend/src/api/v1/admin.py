@@ -73,6 +73,48 @@ class SystemSettingsUpdateRequest(BaseModel):
     allow_registration: Optional[bool] = None
 
 
+class StorageSourceResponse(BaseModel):
+    """存储源响应"""
+    id: UUID
+    name: str
+    provider: str
+    endpoint: str
+    access_key: str
+    bucket: str
+    region: str
+    secure: bool
+    is_active: bool
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class StorageSourceCreateRequest(BaseModel):
+    """创建存储源请求"""
+    name: str = Field(..., max_length=100, description="存储源名称")
+    provider: str = Field(..., description="存储提供商")
+    endpoint: str = Field(..., description="存储端点")
+    access_key: str = Field(..., description="访问密钥ID")
+    secret_key: str = Field(..., description="访问密钥Secret")
+    bucket: str = Field(..., description="存储桶名称")
+    region: str = Field(default="us-east-1", description="区域")
+    secure: bool = Field(default=False, description="是否使用HTTPS")
+
+
+class StorageTestResponse(BaseModel):
+    """存储连接测试响应"""
+    success: bool
+    message: str
+
+
+class StorageFileInfo(BaseModel):
+    """存储文件信息"""
+    key: str
+    size: int
+    last_modified: Optional[datetime] = None
+    url: str
+
+
 # ============================================
 # Dependencies
 # ============================================
@@ -347,6 +389,230 @@ async def update_system_settings(
         await db.commit()
 
     return await get_system_settings(admin_user, db)
+
+
+# ============================================
+# 存储源管理
+# ============================================
+
+from src.models.storage_source import StorageSource
+
+
+@router.get("/storage/sources", response_model=List[StorageSourceResponse], summary="获取存储源列表")
+async def list_storage_sources(
+    admin_user: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """获取所有存储源"""
+    result = await db.execute(select(StorageSource).order_by(StorageSource.created_at.desc()))
+    return result.scalars().all()
+
+
+@router.post("/storage/sources", response_model=StorageSourceResponse, summary="创建存储源")
+async def create_storage_source(
+    data: StorageSourceCreateRequest,
+    admin_user: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """创建新存储源"""
+    source = StorageSource(
+        name=data.name,
+        provider=data.provider,
+        endpoint=data.endpoint,
+        access_key=data.access_key,
+        secret_key=data.secret_key,
+        bucket=data.bucket,
+        region=data.region,
+        secure=data.secure,
+    )
+    db.add(source)
+    await db.commit()
+    await db.refresh(source)
+    return source
+
+
+@router.put("/storage/sources/{source_id}", response_model=StorageSourceResponse, summary="更新存储源")
+async def update_storage_source(
+    source_id: UUID,
+    data: StorageSourceCreateRequest,
+    admin_user: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """更新存储源"""
+    result = await db.execute(select(StorageSource).where(StorageSource.id == source_id))
+    source = result.scalar_one_or_none()
+    if not source:
+        raise HTTPException(status_code=404, detail="存储源不存在")
+
+    source.name = data.name
+    source.provider = data.provider
+    source.endpoint = data.endpoint
+    source.access_key = data.access_key
+    source.secret_key = data.secret_key
+    source.bucket = data.bucket
+    source.region = data.region
+    source.secure = data.secure
+    await db.commit()
+    await db.refresh(source)
+
+    # 如果是当前激活的存储源，重新加载配置
+    if source.is_active:
+        from src.utils.storage import storage_client, StorageConfig
+        storage_client.reload_config(StorageConfig(
+            provider=source.provider, endpoint=source.endpoint,
+            access_key=source.access_key, secret_key=source.secret_key,
+            bucket=source.bucket, region=source.region, secure=source.secure
+        ))
+
+    return source
+
+
+@router.delete("/storage/sources/{source_id}", response_model=MessageResponse, summary="删除存储源")
+async def delete_storage_source(
+    source_id: UUID,
+    admin_user: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """删除存储源"""
+    result = await db.execute(select(StorageSource).where(StorageSource.id == source_id))
+    source = result.scalar_one_or_none()
+    if not source:
+        raise HTTPException(status_code=404, detail="存储源不存在")
+    if source.is_active:
+        raise HTTPException(status_code=400, detail="不能删除已启用的存储源")
+
+    await db.delete(source)
+    await db.commit()
+    return MessageResponse(message="存储源已删除")
+
+
+@router.post("/storage/sources/{source_id}/activate", response_model=StorageSourceResponse, summary="启用存储源")
+async def activate_storage_source(
+    source_id: UUID,
+    admin_user: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """启用指定存储源（禁用其他）"""
+    result = await db.execute(select(StorageSource).where(StorageSource.id == source_id))
+    source = result.scalar_one_or_none()
+    if not source:
+        raise HTTPException(status_code=404, detail="存储源不存在")
+
+    # 禁用所有其他存储源
+    await db.execute(
+        StorageSource.__table__.update().values(is_active=False)
+    )
+    source.is_active = True
+    await db.commit()
+    await db.refresh(source)
+
+    # 重新加载存储客户端配置
+    from src.utils.storage import storage_client, StorageConfig
+    storage_client.reload_config(StorageConfig(
+        provider=source.provider, endpoint=source.endpoint,
+        access_key=source.access_key, secret_key=source.secret_key,
+        bucket=source.bucket, region=source.region, secure=source.secure
+    ))
+
+    return source
+
+
+@router.post("/storage/sources/{source_id}/deactivate", response_model=MessageResponse, summary="禁用存储源")
+async def deactivate_storage_source(
+    source_id: UUID,
+    admin_user: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """禁用指定存储源，恢复使用环境变量配置"""
+    result = await db.execute(select(StorageSource).where(StorageSource.id == source_id))
+    source = result.scalar_one_or_none()
+    if not source:
+        raise HTTPException(status_code=404, detail="存储源不存在")
+    if not source.is_active:
+        raise HTTPException(status_code=400, detail="存储源未启用")
+
+    source.is_active = False
+    await db.commit()
+
+    # 恢复使用环境变量配置
+    from src.utils.storage import storage_client, StorageConfig
+    storage_client.reload_config(StorageConfig.from_env())
+
+    return MessageResponse(message="存储源已禁用，已恢复使用默认配置")
+
+
+@router.post("/storage/sources/test", response_model=StorageTestResponse, summary="测试存储连接")
+async def test_storage_connection(
+    data: StorageSourceCreateRequest,
+    admin_user: User = Depends(get_admin_user),
+):
+    """测试存储连接"""
+    from src.utils.storage import S3Storage, StorageConfig
+    test_client = S3Storage(StorageConfig(
+        provider=data.provider, endpoint=data.endpoint,
+        access_key=data.access_key, secret_key=data.secret_key,
+        bucket=data.bucket, region=data.region, secure=data.secure
+    ))
+    result = await test_client.test_connection()
+    return StorageTestResponse(success=result["success"], message=result["message"])
+
+
+# ============================================
+# 存储文件管理
+# ============================================
+
+@router.get("/storage/sources/{source_id}/files", response_model=List[StorageFileInfo], summary="浏览存储文件")
+async def list_storage_files(
+    source_id: UUID,
+    prefix: str = Query("", description="路径前缀"),
+    limit: int = Query(100, le=500),
+    admin_user: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """浏览存储源中的文件"""
+    result = await db.execute(select(StorageSource).where(StorageSource.id == source_id))
+    source = result.scalar_one_or_none()
+    if not source:
+        raise HTTPException(status_code=404, detail="存储源不存在")
+
+    from src.utils.storage import S3Storage, StorageConfig
+    client = S3Storage(StorageConfig(
+        provider=source.provider, endpoint=source.endpoint,
+        access_key=source.access_key, secret_key=source.secret_key,
+        bucket=source.bucket, region=source.region, secure=source.secure
+    ))
+
+    files = await client.list_files(prefix, limit)
+    return [StorageFileInfo(
+        key=f["object_key"], size=f["size"],
+        last_modified=f.get("last_modified"), url=f["url"]
+    ) for f in files]
+
+
+@router.delete("/storage/sources/{source_id}/files", response_model=MessageResponse, summary="删除存储文件")
+async def delete_storage_file(
+    source_id: UUID,
+    key: str = Query(..., description="文件路径"),
+    admin_user: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """删除存储源中的文件"""
+    result = await db.execute(select(StorageSource).where(StorageSource.id == source_id))
+    source = result.scalar_one_or_none()
+    if not source:
+        raise HTTPException(status_code=404, detail="存储源不存在")
+
+    from src.utils.storage import S3Storage, StorageConfig
+    client = S3Storage(StorageConfig(
+        provider=source.provider, endpoint=source.endpoint,
+        access_key=source.access_key, secret_key=source.secret_key,
+        bucket=source.bucket, region=source.region, secure=source.secure
+    ))
+
+    success = await client.delete_file(key)
+    if success:
+        return MessageResponse(message="文件已删除")
+    raise HTTPException(status_code=500, detail="删除文件失败")
 
 
 __all__ = ["router"]

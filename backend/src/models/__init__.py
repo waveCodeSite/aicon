@@ -11,6 +11,7 @@ from src.models.project import Project, ProjectStatus
 from src.models.sentence import Sentence, SentenceStatus
 from src.models.user import User
 from src.models.video_task import VideoTask, VideoTaskStatus
+from src.models.storage_source import StorageSource
 
 __all__ = [
     "Base",
@@ -31,4 +32,5 @@ __all__ = [
     "VideoTaskStatus",
     "BGM",
     "BGMStatus",
+    "StorageSource",
 ]
