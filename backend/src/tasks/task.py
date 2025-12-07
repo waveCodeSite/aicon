@@ -101,12 +101,16 @@ def run_async_task(coro):
     """
 
     async def _wrapper():
-        from src.core.database import close_database_connections, AsyncSessionLocal
+        from src.core.database import close_database_connections, create_database_engine, AsyncSessionLocal
         from src.utils.storage import reload_storage_config_from_db
         # 在新的事件循环中，必须重置数据库连接，因为旧的连接绑定在已关闭的循环上
         await close_database_connections()
+        # 确保数据库引擎已初始化
+        await create_database_engine()
+        # 重新导入已初始化的 AsyncSessionLocal
+        from src.core.database import AsyncSessionLocal as SessionLocal
         # 加载数据库中的存储配置
-        async with AsyncSessionLocal() as db:
+        async with SessionLocal() as db:
             await reload_storage_config_from_db(db)
         return await coro
 
