@@ -13,6 +13,7 @@
         <ProjectCard
           :project="project"
           @view="$emit('view-project', $event)"
+          @delete="$emit('delete-project', $event)"
         />
       </el-col>
     </el-row>
@@ -29,7 +30,7 @@ defineProps({
   }
 })
 
-defineEmits(['view-project'])
+defineEmits(['view-project', 'delete-project'])
 </script>
 
 <style scoped>

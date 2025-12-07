@@ -8,6 +8,13 @@
         </el-icon>
       </div>
       <div class="card-title">{{ project.title }}</div>
+      <el-button
+        type="danger"
+        :icon="Delete"
+        size="small"
+        circle
+        @click.stop="$emit('delete', project)"
+      />
     </div>
 
     <!-- 卡片内容 -->
@@ -72,7 +79,8 @@ import {
   Document,
   VideoPlay,
   Microphone,
-  Picture
+  Picture,
+  Delete
 } from '@element-plus/icons-vue'
 
 import { useProjectsStore } from '@/stores/projects'
@@ -90,7 +98,8 @@ const projectsStore = useProjectsStore()
 
 // Emits定义
 const emit = defineEmits([
-  'view'
+  'view',
+  'delete'
 ])
 
 // 计算属性
