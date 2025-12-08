@@ -62,7 +62,7 @@ def create_access_token(
             minutes=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES
         )
 
-    to_encode.update({"exp": expire, "iat": datetime.utcnow()})
+    to_encode.update({"exp": expire, "iat": datetime.utcnow(), "type": "access"})
 
     try:
         encoded_jwt = jwt.encode(
@@ -73,6 +73,33 @@ def create_access_token(
         return encoded_jwt
     except Exception as e:
         raise TokenError("令牌创建失败")
+
+
+def create_refresh_token(
+        data: Dict[str, Any],
+        expires_delta: Optional[timedelta] = None
+) -> str:
+    """创建刷新令牌"""
+    to_encode = data.copy()
+
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(
+            days=settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS
+        )
+
+    to_encode.update({"exp": expire, "iat": datetime.utcnow(), "type": "refresh"})
+
+    try:
+        encoded_jwt = jwt.encode(
+            to_encode,
+            settings.JWT_SECRET_KEY,
+            algorithm=settings.JWT_ALGORITHM
+        )
+        return encoded_jwt
+    except Exception as e:
+        raise TokenError("刷新令牌创建失败")
 
 
 def verify_token(token: str) -> Dict[str, Any]:
@@ -106,6 +133,7 @@ __all__ = [
     "verify_password",
     "get_password_hash",
     "create_access_token",
+    "create_refresh_token",
     "verify_token",
     "verify_websocket_token",
     "SecurityError",

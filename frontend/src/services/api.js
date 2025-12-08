@@ -34,7 +34,7 @@ api.interceptors.response.use(
   (response) => {
     return response.data
   },
-  (error) => {
+  async (error) => {
     const { response, config } = error
 
     if (response) {
@@ -42,16 +42,22 @@ api.interceptors.response.use(
 
       switch (status) {
         case 401:
-          // 检查是否是登录接口，如果是登录接口则显示具体的错误信息
-          if (config.url && config.url.includes('/auth/login')) {
-            // 登录失败，显示服务器返回的具体错误信息
-            ElMessage.error(data.detail || '用户名或密码错误')
+          // 检查是否是登录或刷新接口
+          if (config.url && (config.url.includes('/auth/login') || config.url.includes('/auth/refresh'))) {
+            ElMessage.error(data.detail || '认证失败')
           } else {
-            // 其他接口的401错误，表示登录已过期
+            // 尝试刷新token
             const authStore = useAuthStore()
-            authStore.logout()
-            router.push({ name: 'Login', query: { redirect: router.currentRoute.value.fullPath } })
-            ElMessage.error('登录已过期，请重新登录')
+            try {
+              await authStore.refresh()
+              // 重试原请求
+              return api.request(config)
+            } catch (refreshError) {
+              // 刷新失败，登出
+              authStore.logout()
+              router.push({ name: 'Login', query: { redirect: router.currentRoute.value.fullPath } })
+              ElMessage.error('登录已过期，请重新登录')
+            }
           }
           break
 

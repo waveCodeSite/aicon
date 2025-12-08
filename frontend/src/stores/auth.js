@@ -4,6 +4,7 @@ import { authService } from '@/services/auth'
 
 export const useAuthStore = defineStore('auth', () => {
   const token = ref(localStorage.getItem('token') || '')
+  const refreshToken = ref(localStorage.getItem('refreshToken') || '')
   const user = ref(null)
   const loading = ref(false)
 
@@ -15,7 +16,9 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       const response = await authService.login(credentials)
       token.value = response.access_token
+      refreshToken.value = response.refresh_token
       localStorage.setItem('token', token.value)
+      localStorage.setItem('refreshToken', refreshToken.value)
       await getCurrentUser()
       return response
     } finally {
@@ -98,15 +101,32 @@ export const useAuthStore = defineStore('auth', () => {
     return await authService.getAvatarInfo()
   }
 
+  // 刷新token
+  const refresh = async () => {
+    if (!refreshToken.value) {
+      throw new Error('No refresh token')
+    }
+
+    const response = await authService.refreshToken(refreshToken.value)
+    token.value = response.access_token
+    refreshToken.value = response.refresh_token
+    localStorage.setItem('token', token.value)
+    localStorage.setItem('refreshToken', refreshToken.value)
+    return response
+  }
+
   // 登出
   const logout = () => {
     token.value = ''
+    refreshToken.value = ''
     user.value = null
     localStorage.removeItem('token')
+    localStorage.removeItem('refreshToken')
   }
 
   return {
     token,
+    refreshToken,
     user,
     loading,
     isAuthenticated,
@@ -121,6 +141,7 @@ export const useAuthStore = defineStore('auth', () => {
     uploadAvatar,
     removeAvatar,
     getAvatarInfo,
+    refresh,
     logout
   }
 })

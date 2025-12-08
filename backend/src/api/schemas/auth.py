@@ -55,6 +55,7 @@ class UserLogin(BaseModel):
 class TokenResponse(BaseModel):
     """令牌响应模式"""
     access_token: str = Field(..., description="访问令牌")
+    refresh_token: str = Field(..., description="刷新令牌")
     token_type: str = Field("bearer", description="令牌类型")
     expires_in: int = Field(..., description="过期时间（秒）")
     user: Optional[UserResponse] = Field(None, description="用户信息")
@@ -63,6 +64,7 @@ class TokenResponse(BaseModel):
         "json_schema_extra": {
             "example": {
                 "access_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
+                "refresh_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
                 "token_type": "bearer",
                 "expires_in": 3600,
                 "user": {

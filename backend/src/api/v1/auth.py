@@ -14,6 +14,7 @@ from src.core.config import settings
 from src.core.database import get_db
 from src.core.security import (
     create_access_token,
+    create_refresh_token,
     verify_token,
     TokenError
 )
@@ -144,15 +145,22 @@ async def login(
     user.update_last_login()
     await db.commit()
 
-    # 创建访问令牌
+    # 创建访问令牌和刷新令牌
     access_token_expires = timedelta(minutes=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": str(user.id), "username": user.username},
         expires_delta=access_token_expires
     )
 
+    refresh_token_expires = timedelta(days=settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS)
+    refresh_token = create_refresh_token(
+        data={"sub": str(user.id), "username": user.username},
+        expires_delta=refresh_token_expires
+    )
+
     return TokenResponse(
         access_token=access_token,
+        refresh_token=refresh_token,
         token_type="bearer",
         expires_in=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         user=UserResponse.from_orm(user)
@@ -201,6 +209,67 @@ async def get_registration_status(
     if setting and setting.value:
         allow = setting.value.lower() == 'true'
     return {"allow_registration": allow}
+
+
+@router.post("/refresh", response_model=TokenResponse)
+async def refresh_token(
+    refresh_token: str,
+    db: AsyncSession = Depends(get_db)
+) -> Any:
+    """刷新访问令牌"""
+    try:
+        payload = verify_token(refresh_token)
+
+        # 验证是否为refresh token
+        if payload.get("type") != "refresh":
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="无效的刷新令牌"
+            )
+
+        user_id = payload.get("sub")
+        if not user_id:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="无效的刷新令牌"
+            )
+
+        # 查找用户
+        result = await db.execute(select(User).filter(User.id == user_id))
+        user = result.scalar_one_or_none()
+
+        if not user or not user.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="用户不存在或已被禁用"
+            )
+
+        # 创建新的访问令牌和刷新令牌
+        access_token_expires = timedelta(minutes=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES)
+        new_access_token = create_access_token(
+            data={"sub": str(user.id), "username": user.username},
+            expires_delta=access_token_expires
+        )
+
+        refresh_token_expires = timedelta(days=settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS)
+        new_refresh_token = create_refresh_token(
+            data={"sub": str(user.id), "username": user.username},
+            expires_delta=refresh_token_expires
+        )
+
+        return TokenResponse(
+            access_token=new_access_token,
+            refresh_token=new_refresh_token,
+            token_type="bearer",
+            expires_in=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+            user=UserResponse.from_orm(user)
+        )
+
+    except TokenError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="刷新令牌已过期或无效"
+        )
 
 
 __all__ = [

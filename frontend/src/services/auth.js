@@ -65,6 +65,11 @@ export const authService = {
   // 获取头像信息
   async getAvatarInfo() {
     return await get('/users/me/avatar/info')
+  },
+
+  // 刷新token
+  async refreshToken(refreshToken) {
+    return await post('/auth/refresh', { refresh_token: refreshToken })
   }
 }
 
